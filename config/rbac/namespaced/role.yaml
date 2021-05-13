@@ -85,3 +85,23 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - atlas.mongodb.com
+  resources:
+  - atlasservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - atlas.mongodb.com
+  resources:
+  - atlasservices/status
+  verbs:
+  - get
+  - patch
+  - update
