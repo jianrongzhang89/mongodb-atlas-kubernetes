@@ -27,6 +27,7 @@ require (
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v0.23.4
 	sigs.k8s.io/controller-runtime v0.11.1
+	github.com/RHEcosystemAppEng/dbaas-operator v1.0.0
 )
 
 require (
@@ -107,3 +108,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace github.com/RHEcosystemAppEng/dbaas-operator v1.0.0 => github.com/RHEcosystemAppEng/dbaas-operator v1.0.1-0.20210728155403-fcf7cfba855c
