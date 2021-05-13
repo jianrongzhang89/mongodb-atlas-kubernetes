@@ -33,6 +33,7 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
+<<<<<<< HEAD
 # Base registry for the operator, bundle, catalog images
 REGISTRY ?= quay.io/mongodb
 # BUNDLE_IMG defines the image:tag used for the bundle.
@@ -47,6 +48,17 @@ CATALOG_REGISTRY ?= $(REGISTRY)/mongodb-atlas-catalog
 OPERATOR_IMAGE ?= ${OPERATOR_REGISTRY}:${VERSION}
 CATALOG_IMAGE ?= ${CATALOG_REGISTRY}:${VERSION}
 TARGET_NAMESPACE ?= mongodb-atlas-operator-system-test
+=======
+# Image URL to use all building/pushing image targets
+IMG ?= controller:$(VERSION)
+
+# BUNDLE_IMG defines the image:tag used for the bundle.
+BUNDLE_IMG ?= controller-bundle:$(VERSION)
+
+# The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:0.2.0).
+CATALOG_IMG ?= controller-catalog:$(VERSION)
+
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -150,10 +162,13 @@ rm -rf $$TMP_DIR ;\
 endef
 
 .PHONY: bundle
-bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
+bundle: manifests kustomize ## Generate bundle manifests and metadata, update security context for OpenShift, then validate generated files.
 	operator-sdk generate kustomize manifests -q --apis-dir=pkg/api
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	sed -i .bak '/runAsNonRoot: true/d' "./bundle/manifests/mongodb-atlas-kubernetes.clusterserviceversion.yaml"
+	sed -i .bak '/runAsUser: 1000380001/d' "./bundle/manifests/mongodb-atlas-kubernetes.clusterserviceversion.yaml"
+	rm ./bundle/manifests/*.bak
 	operator-sdk bundle validate ./bundle
 
 .PHONY: image
@@ -166,6 +181,7 @@ bundle-build: ## Build the bundle image.
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: bundle-push
+<<<<<<< HEAD
 bundle-push: bundle bundle-build ## Publish the bundle image
 	docker push $(BUNDLE_IMG)
 
@@ -215,6 +231,14 @@ deploy-olm: bundle-build bundle-push catalog-build catalog-push build-catalogsou
 ## docker login -u $(shell oc whoami) -p $(shell oc whoami -t) $(REGISTRY)
 
 .PHONY: docker-push
+=======
+bundle-push: ## Push the bundle image.
+	docker push $(BUNDLE_IMG)
+
+docker-build: ## Build the docker image
+	docker build -t ${IMG} .
+
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 docker-push: ## Push the docker image
 	docker push ${IMG}
 
@@ -242,6 +266,46 @@ post-install-hook:
 	GOARCH=amd64 GOOS=linux CGO_ENABLED=0 go build -o bin/helm-post-install cmd/post-install/main.go
 	chmod +x bin/helm-post-install
 
+<<<<<<< HEAD
 .PHONY: x509-cert
 x509-cert: ## Create X.509 cert at path tmp/x509/ (see docs/x509-user.md)
 	go run scripts/create_x509.go
+=======
+.PHONY: opm
+OPM = ./bin/opm
+opm: ## Download opm locally if necessary.
+ifeq (,$(wildcard $(OPM)))
+ifeq (,$(shell which opm 2>/dev/null))
+	@{ \
+	set -e ;\
+	mkdir -p $(dir $(OPM)) ;\
+	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.17.3/$${OS}-$${ARCH}-opm ;\
+	chmod +x $(OPM) ;\
+	}
+else
+OPM = $(shell which opm)
+endif
+endif
+
+# A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
+# These images MUST exist in a registry and be pull-able.
+BUNDLE_IMGS ?= $(BUNDLE_IMG)
+
+# Set CATALOG_BASE_IMG to an existing catalog image tag to add $BUNDLE_IMGS to that image.
+ifneq ($(origin CATALOG_BASE_IMG), undefined)
+FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
+endif
+
+# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
+# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
+# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
+.PHONY: catalog-build
+catalog-build: opm ## Build a catalog image.
+	$(OPM) index add --container-tool docker --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+
+# Push the catalog image.
+.PHONY: catalog-push
+catalog-push: ## Push a catalog image.
+	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS

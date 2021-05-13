@@ -36,9 +36,13 @@ testbin/
 # don't include generated files from e2e tests
 test/e2e/data/gen/
 test/e2e/output/
+<<<<<<< HEAD
 
 node_modules
 tmp/
 
 # ready to work samples
 deploy/
+=======
+__debug_bin/
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS

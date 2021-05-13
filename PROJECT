@@ -1,6 +1,10 @@
 domain: mongodb.com
 layout:
+<<<<<<< HEAD
 - go.kubebuilder.io/v2
+=======
+- go.kubebuilder.io/v3
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
@@ -11,10 +15,35 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
+<<<<<<< HEAD
   domain: mongodb.com
   group: atlas
   kind: AtlasCluster
   path: github.com/mongodb/mongodb-atlas-kubernetes/api/v1
+=======
+  domain: redhat.com
+  group: dbaas
+  kind: MongoDBAtlasConnection
+  path: github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: redhat.com
+  group: dbaas
+  kind: MongoDBAtlasInventory
+  path: github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: mongodb.com
+  group: atlas
+  kind: AtlasCluster
+  path: github.com/mongodb/mongodb-atlas-kubernetes/pkg/api
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
   version: v1
 - api:
     crdVersion: v1
@@ -22,8 +51,13 @@ resources:
   controller: true
   domain: mongodb.com
   group: atlas
+<<<<<<< HEAD
   kind: AtlasProject
   path: github.com/mongodb/mongodb-atlas-kubernetes/api/v1
+=======
+  kind: AtlasDatabaseUser
+  path: github.com/mongodb/mongodb-atlas-kubernetes/pkg/api
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
   version: v1
 - api:
     crdVersion: v1
@@ -31,6 +65,7 @@ resources:
   controller: true
   domain: mongodb.com
   group: atlas
+<<<<<<< HEAD
   kind: AtlasDatabaseUser
   path: github.com/mongodb/mongodb-atlas-kubernetes/api/v1
   version: v1
@@ -52,4 +87,9 @@ resources:
   kind: AtlasBackupSchedule
   path: github.com/mongodb/mongodb-atlas-kubernetes/api/v1
   version: v1
+=======
+  kind: AtlasProject
+  path: github.com/mongodb/mongodb-atlas-kubernetes/pkg/api
+  version: v1
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 version: "3"

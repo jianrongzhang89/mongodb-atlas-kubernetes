@@ -5,8 +5,13 @@ resources:
 - bases/atlas.mongodb.com_atlasclusters.yaml
 - bases/atlas.mongodb.com_atlasprojects.yaml
 - bases/atlas.mongodb.com_atlasdatabaseusers.yaml
+<<<<<<< HEAD
 - bases/atlas.mongodb.com_atlasbackuppolicies.yaml
 - bases/atlas.mongodb.com_atlasbackupschedules.yaml
+=======
+- bases/dbaas.redhat.com_mongodbatlasconnections.yaml
+- bases/dbaas.redhat.com_mongodbatlasinventories.yaml
+>>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
