@@ -113,9 +113,13 @@ spec:
                         description: AtlasClusterService defines the observed state
                           of AtlasClusterService
                         properties:
-                          conectionString:
-                            description: ConnectionString is the mongodb+srv://<host>
-                              connection URL for the cluster
+                          conectionHost:
+                            description: ConnectionHost is the cluster connection
+                              host
+                            type: string
+                          conectionProtocol:
+                            description: ConnectionProtocol is the protocol for cluster
+                              connection, "mongodb+srv"
                             type: string
                           id:
                             description: The ID of the Atlas Project

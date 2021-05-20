@@ -36,3 +36,10 @@ const (
 	DatabaseUserInvalidSpec                 ConditionReason = "DatabaseUserInvalidSpec"
 	DatabaseUserExpired                     ConditionReason = "DatabaseUserExpired"
 )
+
+// Atlas Service discovery reasons
+const (
+	AtlasProjectsListFailed ConditionReason = "AtlasProjectsListFailed"
+	AtlasClustersListFailed ConditionReason = "AtlasClustersListFailed"
+	AtlasDBUsersListFailed  ConditionReason = "AtlasDBUsersListFailed"
+)

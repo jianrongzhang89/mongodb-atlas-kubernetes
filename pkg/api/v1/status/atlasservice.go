@@ -61,9 +61,13 @@ type AtlasClusterService struct {
 	// +optional
 	RegionName string `json:"regionName,omitempty"`
 
-	// ConnectionString is the mongodb+srv://<host> connection URL for the cluster
+	// ConnectionProtocol is the protocol for cluster connection, "mongodb+srv"
 	// +optional
-	ConnectionString string `json:"conectionString,omitempty"`
+	ConnectionProtocol string `json:"conectionProtocol,omitempty"`
+
+	// ConnectionHost is the cluster connection host
+	// +optional
+	ConnectionHost string `json:"conectionHost,omitempty"`
 }
 
 // AtlasServiceStatus defines the observed state of AtlasService
