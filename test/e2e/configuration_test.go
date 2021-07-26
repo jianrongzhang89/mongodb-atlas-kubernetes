@@ -1,9 +1,12 @@
 package e2e_test
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 
 	actions "github.com/mongodb/mongodb-atlas-kubernetes/test/e2e/actions"
 	kube "github.com/mongodb/mongodb-atlas-kubernetes/test/e2e/cli/kube"
@@ -16,6 +19,9 @@ import (
 var _ = Describe("[cluster-ns] Configuration namespaced. Deploy cluster", func() {
 	var data model.TestDataProvider // TODO check it
 
+	_ = BeforeEach(func() {
+		Eventually(kube.GetVersionOutput()).Should(Say(K8sVersion))
+	})
 	_ = AfterEach(func() {
 		GinkgoWriter.Write([]byte("\n"))
 		GinkgoWriter.Write([]byte("===============================================\n"))
@@ -24,7 +30,11 @@ var _ = Describe("[cluster-ns] Configuration namespaced. Deploy cluster", func()
 		if CurrentGinkgoTestDescription().Failed {
 			GinkgoWriter.Write([]byte("Test has been failed. Trying to save logs...\n"))
 			utils.SaveToFile(
-				"output/operator-logs.txt",
+				fmt.Sprintf("output/%s/operatorDecribe.txt", data.Resources.Namespace),
+				[]byte(kube.DescribeOperatorPod(data.Resources.Namespace)),
+			)
+			utils.SaveToFile(
+				fmt.Sprintf("output/%s/operator-logs.txt", data.Resources.Namespace),
 				kube.GetManagerLogs(data.Resources.Namespace),
 			)
 			actions.SaveTestAppLogs(data.Resources)
@@ -45,6 +55,7 @@ var _ = Describe("[cluster-ns] Configuration namespaced. Deploy cluster", func()
 		Entry("Trial - Simplest configuration with no backup and one Admin User",
 			model.NewTestDataProvider(
 				"operator-ns-trial",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_basic.yaml"},
 				[]string{},
 				[]model.DBUser{
@@ -58,9 +69,10 @@ var _ = Describe("[cluster-ns] Configuration namespaced. Deploy cluster", func()
 				},
 			),
 		),
-		Entry("Almost Production - Backup and 2 users, one Admin and one read-only",
+		Entry("Almost Production - Backup and 2 DB users: one Admin and one read-only",
 			model.NewTestDataProvider(
 				"operator-ns-prodlike",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_backup.yaml"},
 				[]string{"data/atlascluster_backup_update.yaml"},
 				[]model.DBUser{
@@ -80,9 +92,10 @@ var _ = Describe("[cluster-ns] Configuration namespaced. Deploy cluster", func()
 				},
 			),
 		),
-		Entry("Multiregion, Backup and 2 users",
+		Entry("Multiregion, Backup and 2 DBUsers",
 			model.NewTestDataProvider(
 				"operator-ns-multiregion",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_multiregion.yaml"},
 				[]string{"data/atlascluster_multiregion_update.yaml"},
 				[]model.DBUser{
@@ -97,6 +110,40 @@ var _ = Describe("[cluster-ns] Configuration namespaced. Deploy cluster", func()
 				[]func(*model.TestDataProvider){
 					actions.SuspendCluster,
 					actions.ReactivateCluster,
+					actions.DeleteFirstUser,
+				},
+			),
+		),
+		Entry("Product Owner - Simplest configuration with ProjectOwner and update cluster to have backup",
+			model.NewTestDataProvider(
+				"operator-ns-product-owner",
+				model.NewEmptyAtlasKeyType().WithRoles([]model.AtlasRoles{model.GroupOwner}).WithWhiteList([]string{"0.0.0.1/1", "128.0.0.0/1"}),
+				[]string{"data/atlascluster_backup.yaml"},
+				[]string{"data/atlascluster_backup_update_remove_backup.yaml"},
+				[]model.DBUser{
+					*model.NewDBUser("user1").
+						WithSecretRef("dbuser-secret-u1").
+						AddBuildInAdminRole(),
+				},
+				30010,
+				[]func(*model.TestDataProvider){
+					actions.UpdateClusterFromUpdateConfig,
+				},
+			),
+		),
+		Entry("Trial - Global connection",
+			model.NewTestDataProvider(
+				"operator-ns-trial-global",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess().CreateAsGlobalLevelKey(),
+				[]string{"data/atlascluster_basic.yaml"},
+				[]string{},
+				[]model.DBUser{
+					*model.NewDBUser("user1").
+						WithSecretRef("dbuser-secret-u1").
+						AddBuildInAdminRole(),
+				},
+				30011,
+				[]func(*model.TestDataProvider){
 					actions.DeleteFirstUser,
 				},
 			),
