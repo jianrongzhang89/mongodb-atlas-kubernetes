@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 
 	"github.com/onsi/gomega/gexec"
 
@@ -23,6 +24,7 @@ var _ = Describe("[bundle-test] User can deploy operator from bundles", func() {
 	var _ = BeforeEach(func() {
 		imageURL = os.Getenv("BUNDLE_IMAGE")
 		Expect(imageURL).ShouldNot(BeEmpty(), "SetUP BUNDLE_IMAGE")
+		Eventually(kube.GetVersionOutput()).Should(Say(K8sVersion))
 	})
 	var _ = AfterEach(func() {
 		By("Atfer each.", func() {
@@ -48,12 +50,13 @@ var _ = Describe("[bundle-test] User can deploy operator from bundles", func() {
 	})
 
 	It("User can install", func() {
-		Eventually(cli.Execute("operator-sdk", "olm", "install", "--version", "v0.17.0"), "3m").Should(gexec.Exit(0)) // TODO remove version param https://jira.mongodb.org/browse/CLOUDP-88736
+		Eventually(cli.Execute("operator-sdk", "olm", "install"), "3m").Should(gexec.Exit(0))
 		Eventually(cli.Execute("operator-sdk", "run", "bundle", imageURL), "5m").Should(gexec.Exit(0))
 
 		By("User creates configuration for a new Project and Cluster", func() {
 			data = model.NewTestDataProvider(
 				"bundle-wide",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_basic.yaml"},
 				[]string{},
 				[]model.DBUser{

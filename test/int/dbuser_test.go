@@ -42,11 +42,14 @@ const (
 	UserPasswordSecret2 = "second-user-password-secret"
 	DBUserPassword2     = "H@lla#!"
 	// M2 clusters take longer time to apply changes
-	DBUserUpdateTimeout = 170
+	DBUserUpdateTimeout = time.Minute * 4
 )
 
 var _ = Describe("AtlasDatabaseUser", func() {
-	const interval = time.Second * 1
+	const (
+		interval      = PollingInterval
+		intervalShort = time.Second * 2
+	)
 
 	var (
 		connectionSecret    corev1.Secret
@@ -148,10 +151,10 @@ var _ = Describe("AtlasDatabaseUser", func() {
 	Describe("Create/Update two users, two clusters", func() {
 		It("They should be created successfully", func() {
 			By("Creating clusters", func() {
-				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAWS)).ToNot(HaveOccurred())
 
-				createdClusterAzure = mdbv1.DefaultAzureCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAzure = mdbv1.DefaultAzureCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAzure)).ToNot(HaveOccurred())
 
 				Eventually(testutil.WaitFor(k8sClient, createdClusterAWS, status.TrueCondition(status.ReadyType), validateClusterCreatingFunc()),
@@ -181,11 +184,11 @@ var _ = Describe("AtlasDatabaseUser", func() {
 					// The user created lacks read/write roles
 					err := tryWrite(createdProject.ID(), *createdClusterAzure, *createdDBUser, "test", "operatortest")
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(MatchRegexp("user is not allowed"))
+					Expect(err.Error()).To(MatchRegexp("not authorized on test to execute command")) // TODO check this is the same "user is not allowed"
 
 					err = tryWrite(createdProject.ID(), *createdClusterAWS, *createdDBUser, "test", "operatortest")
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(MatchRegexp("user is not allowed"))
+					Expect(err.Error()).To(MatchRegexp("not authorized on test to execute command")) // TODO check this is the same "user is not allowed"
 				})
 			})
 			By("Update database user - give readWrite permissions", func() {
@@ -229,7 +232,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 							WithMessageRegexp("such cluster doesn't exist in Atlas"),
 					),
 					20,
-					interval,
+					intervalShort,
 				).Should(BeTrue())
 			})
 			By("Fixing second user", func() {
@@ -239,7 +242,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 
 				// First we need to wait for "such cluster doesn't exist in Atlas" error to be gone
 				Eventually(testutil.WaitFor(k8sClient, secondDBUser, status.FalseCondition(status.DatabaseUserReadyType).WithReason(string(workflow.DatabaseUserClustersAppliedChanges))),
-					20, interval).Should(BeTrue())
+					20, intervalShort).Should(BeTrue())
 
 				Eventually(testutil.WaitFor(k8sClient, secondDBUser, status.TrueCondition(status.ReadyType), validateDatabaseUserUpdatingFunc()),
 					DBUserUpdateTimeout, interval).Should(BeTrue())
@@ -264,7 +267,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 
 					err := tryWrite(createdProject.ID(), *createdClusterAzure, *secondDBUser, "test", "someNotAllowedCollection")
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(MatchRegexp("user is not allowed"))
+					Expect(err.Error()).To(MatchRegexp("not authorized on test to execute command")) // TODO check this is the same "user is not allowed"
 				})
 				By("Removing Second user", func() {
 					Expect(k8sClient.Delete(context.Background(), secondDBUser)).To(Succeed())
@@ -302,12 +305,12 @@ var _ = Describe("AtlasDatabaseUser", func() {
 				checkNumberOfConnectionSecrets(k8sClient, *createdProject, 0)
 			})
 			By("Creating cluster", func() {
-				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAWS)).ToNot(HaveOccurred())
 
 				// We don't wait for the full cluster creation - only when it has started the process
 				Eventually(testutil.WaitFor(k8sClient, createdClusterAWS, status.FalseCondition(status.ClusterReadyType).WithReason(string(workflow.ClusterCreating))),
-					20, interval).Should(BeTrue())
+					20, intervalShort).Should(BeTrue())
 			})
 			By("Updating the database user while the cluster is being created", func() {
 				createdDBUser = createdDBUser.WithRole("read", "test", "somecollection")
@@ -335,7 +338,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 	Describe("Check the password Secret is watched", func() {
 		It("Should succeed", func() {
 			By("Creating clusters", func() {
-				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAWS)).ToNot(HaveOccurred())
 
 				Eventually(testutil.WaitFor(k8sClient, createdClusterAWS, status.TrueCondition(status.ReadyType), validateClusterCreatingFunc()),
@@ -391,10 +394,10 @@ var _ = Describe("AtlasDatabaseUser", func() {
 	Describe("Change database users (make sure all stale secrets are removed)", func() {
 		It("Should succeed", func() {
 			By("Creating AWS and Azure clusters", func() {
-				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAWS)).ToNot(HaveOccurred())
 
-				createdClusterAzure = mdbv1.DefaultAzureCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAzure = mdbv1.DefaultAzureCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAzure)).ToNot(HaveOccurred())
 
 				Eventually(testutil.WaitFor(k8sClient, createdClusterAWS, status.TrueCondition(status.ReadyType), validateClusterCreatingFunc()),
@@ -460,7 +463,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 	Describe("Check the user expiration", func() {
 		It("Should succeed", func() {
 			By("Creating a AWS cluster", func() {
-				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name).Lightweight()
+				createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name)
 				Expect(k8sClient.Create(context.Background(), createdClusterAWS)).To(Succeed())
 
 				Eventually(testutil.WaitFor(k8sClient, createdClusterAWS, status.TrueCondition(status.ReadyType), validateClusterCreatingFunc()),
@@ -468,7 +471,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 			})
 
 			By("Creating the expired Database User - no user created in Atlas", func() {
-				before := time.Now().Add(time.Minute * -10).Format("2006-01-02T15:04:05")
+				before := time.Now().UTC().Add(time.Minute * -10).Format("2006-01-02T15:04:05")
 				createdDBUser = mdbv1.DefaultDBUser(namespace.Name, "test-db-user", createdProject.Name).
 					WithPasswordSecret(UserPasswordSecret).
 					WithDeleteAfterDate(before)
@@ -476,7 +479,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 				Expect(k8sClient.Create(context.Background(), createdDBUser)).To(Succeed())
 
 				Eventually(testutil.WaitFor(k8sClient, createdDBUser, status.FalseCondition(status.DatabaseUserReadyType).WithReason(string(workflow.DatabaseUserExpired))),
-					10, interval).Should(BeTrue())
+					15, intervalShort).Should(BeTrue())
 
 				checkNumberOfConnectionSecrets(k8sClient, *createdProject, 0)
 
@@ -485,7 +488,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 				Expect(err).To(HaveOccurred())
 			})
 			By("Fixing the Database User - setting the expiration to future", func() {
-				after := time.Now().Add(time.Hour * 10).Format("2006-01-02T15:04:05")
+				after := time.Now().UTC().Add(time.Hour * 10).Format("2006-01-02T15:04:05")
 				createdDBUser = createdDBUser.WithDeleteAfterDate(after)
 
 				Expect(k8sClient.Update(context.Background(), createdDBUser)).To(Succeed())
@@ -497,7 +500,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 				Expect(tryConnect(createdProject.ID(), *createdClusterAWS, *createdDBUser)).Should(Succeed())
 			})
 			By("Extending the expiration", func() {
-				after := time.Now().Add(time.Hour * 30).Format("2006-01-02T15:04:05")
+				after := time.Now().UTC().Add(time.Hour * 30).Format("2006-01-02T15:04:05")
 				createdDBUser = createdDBUser.WithDeleteAfterDate(after)
 
 				Expect(k8sClient.Update(context.Background(), createdDBUser)).To(Succeed())
@@ -507,12 +510,12 @@ var _ = Describe("AtlasDatabaseUser", func() {
 				checkUserInAtlas(createdProject.ID(), *createdDBUser)
 			})
 			By("Emulating expiration of the User - connection secret must be removed", func() {
-				before := time.Now().Add(time.Minute * -5).Format("2006-01-02T15:04:05")
+				before := time.Now().UTC().Add(time.Minute * -5).Format("2006-01-02T15:04:05")
 				createdDBUser = createdDBUser.WithDeleteAfterDate(before)
 
 				Expect(k8sClient.Update(context.Background(), createdDBUser)).To(Succeed())
 				Eventually(testutil.WaitFor(k8sClient, createdDBUser, status.FalseCondition(status.DatabaseUserReadyType).WithReason(string(workflow.DatabaseUserExpired))),
-					10, interval).Should(BeTrue())
+					20, intervalShort).Should(BeTrue())
 
 				expectedConditionsMatchers := testutil.MatchConditions(
 					status.FalseCondition(status.DatabaseUserReadyType),
@@ -526,7 +529,7 @@ var _ = Describe("AtlasDatabaseUser", func() {
 		Describe("Deleting the db user (not cleaning Atlas)", func() {
 			It("Should Succeed", func() {
 				By(`Creating the db user with retention policy "keep" first`, func() {
-					createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name).Lightweight()
+					createdClusterAWS = mdbv1.DefaultAWSCluster(namespace.Name, createdProject.Name)
 					Expect(k8sClient.Create(context.Background(), createdClusterAWS)).ToNot(HaveOccurred())
 
 					Eventually(testutil.WaitFor(k8sClient, createdClusterAWS, status.TrueCondition(status.ReadyType), validateClusterCreatingFunc()),
@@ -668,10 +671,10 @@ func validateSecret(k8sClient client.Client, project mdbv1.AtlasProject, cluster
 	Expect(err).NotTo(HaveOccurred())
 
 	expectedData := map[string][]byte{
-		"connectionString.standard":    []byte(buildConnectionURL(c.ConnectionStrings.Standard, username, password)),
-		"connectionString.standardSrv": []byte(buildConnectionURL(c.ConnectionStrings.StandardSrv, username, password)),
-		"username":                     []byte(username),
-		"password":                     []byte(password),
+		"connectionStringStandard":    []byte(buildConnectionURL(c.ConnectionStrings.Standard, username, password)),
+		"connectionStringStandardSrv": []byte(buildConnectionURL(c.ConnectionStrings.StandardSrv, username, password)),
+		"username":                    []byte(username),
+		"password":                    []byte(password),
 	}
 	expectedLabels := map[string]string{
 		"atlas.mongodb.com/project-id":   project.ID(),
