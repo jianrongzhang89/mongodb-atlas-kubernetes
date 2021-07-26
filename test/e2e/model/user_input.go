@@ -9,6 +9,7 @@ import (
 )
 
 type UserInputs struct {
+	AtlasKeyAccessType AtlasKeyType
 	ProjectID          string
 	KeyName            string
 	Namespace          string
@@ -20,16 +21,21 @@ type UserInputs struct {
 }
 
 // NewUsersInputs prepare users inputs
-func NewUserInputs(keyTestPrefix string, users []DBUser) UserInputs {
+func NewUserInputs(keyTestPrefix string, users []DBUser, r *AtlasKeyType) UserInputs {
 	projectName := fmt.Sprintf("%s-%s", keyTestPrefix, utils.GenID())
 	input := UserInputs{
+		AtlasKeyAccessType: *r,
 		ProjectID:          "",
 		KeyName:            keyTestPrefix,
 		Namespace:          "ns-" + projectName,
 		K8sFullProjectName: "atlasproject.atlas.mongodb.com/k-" + projectName,
 		ProjectPath:        filepath.Join(DataFolder, projectName, "resources", projectName+".yaml"),
 	}
-	input.Project = NewProject("k-"+projectName).ProjectName(projectName).SecretRef(keyTestPrefix).WithIpAccess("0.0.0.0/0", "everyone")
+	input.Project = NewProject("k-"+projectName).ProjectName(projectName).WithIpAccess("0.0.0.0/0", "everyone")
+	if !r.GlobalLevelKey {
+		input.Project = input.Project.SecretRef(keyTestPrefix)
+	}
+
 	for _, user := range users {
 		input.Users = append(input.Users, *user.WithProjectRef(input.Project.GetK8sMetaName()))
 	}
@@ -50,4 +56,8 @@ func (u *UserInputs) GetResourceFolder() string {
 
 func (u *UserInputs) GetUsersFolder() string {
 	return filepath.Join(u.GetResourceFolder(), "user")
+}
+
+func (u *UserInputs) GetServiceCatalogSourceFolder() string {
+	return filepath.Join(DataFolder, u.Project.Spec.Name, "catalog")
 }

@@ -20,6 +20,7 @@ var _ = Describe("[cluster-wide] Users (Norton and Nimnul) can work with one Clu
 	commonClusterName := "megacluster"
 
 	_ = BeforeEach(func() {
+		Eventually(kube.GetVersionOutput()).Should(Say(K8sVersion))
 		By("User Install CRD, cluster wide Operator", func() {
 			Eventually(kube.Apply(ConfigAll)).Should(
 				Say("customresourcedefinition.apiextensions.k8s.io/atlasclusters.atlas.mongodb.com"),
@@ -64,6 +65,7 @@ var _ = Describe("[cluster-wide] Users (Norton and Nimnul) can work with one Clu
 		By("Users can create clusters with the same name", func() {
 			NortonData = model.NewTestDataProvider(
 				"norton-wide",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_backup.yaml"},
 				[]string{},
 				[]model.DBUser{
@@ -77,6 +79,7 @@ var _ = Describe("[cluster-wide] Users (Norton and Nimnul) can work with one Clu
 			)
 			NimnulData = model.NewTestDataProvider(
 				"nimnul-wide",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_basic.yaml"},
 				[]string{},
 				[]model.DBUser{

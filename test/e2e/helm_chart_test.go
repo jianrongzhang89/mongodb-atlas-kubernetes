@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 
 	actions "github.com/mongodb/mongodb-atlas-kubernetes/test/e2e/actions"
 	helm "github.com/mongodb/mongodb-atlas-kubernetes/test/e2e/cli/helm"
@@ -23,6 +24,7 @@ var _ = Describe("HELM charts", func() {
 	var _ = BeforeEach(func() {
 		imageURL := os.Getenv("IMAGE_URL")
 		Expect(imageURL).ShouldNot(BeEmpty(), "SetUP IMAGE_URL")
+		Eventually(kube.GetVersionOutput()).Should(Say(K8sVersion))
 	})
 
 	var _ = AfterEach(func() {
@@ -55,7 +57,7 @@ var _ = Describe("HELM charts", func() {
 			data = test
 			By("User use helm for deploying namespaces operator", func() {
 				helm.AddMongoDBRepo()
-				helm.InstallKubernetesOperatorNS(data.Resources)
+				helm.InstallK8sOperatorNS(data.Resources)
 			})
 
 			deployCluster(&data)
@@ -69,6 +71,7 @@ var _ = Describe("HELM charts", func() {
 		Entry("Several actions with helm update",
 			model.NewTestDataProvider(
 				"helm-ns",
+				model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 				[]string{"data/atlascluster_basic_helm.yaml"},
 				[]string{},
 				[]model.DBUser{
@@ -92,6 +95,7 @@ var _ = Describe("HELM charts", func() {
 			By("User creates configuration for a new Project and Cluster", func() {
 				data = model.NewTestDataProvider(
 					"helm-wide",
+					model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
 					[]string{"data/atlascluster_basic_helm.yaml"},
 					[]string{},
 					[]model.DBUser{
@@ -109,10 +113,48 @@ var _ = Describe("HELM charts", func() {
 			})
 			By("User use helm for deploying operator", func() {
 				helm.AddMongoDBRepo()
-				helm.InstallKubernetesOperatorWide(data.Resources)
+				helm.InstallK8sOperatorWide(data.Resources)
 			})
 			deployCluster(&data)
 			deleteClusterAndOperator(&data)
+		})
+	})
+
+	Describe("[helm-update] HELM charts.", func() {
+		It("User deploy operator and later deploy new version of the Atlas operator", func() {
+			By("User creates configuration for a new Project, Cluster, DBUser", func() {
+				data = model.NewTestDataProvider(
+					"helm-upgrade",
+					model.NewEmptyAtlasKeyType().UseDefaulFullAccess(),
+					[]string{"data/atlascluster_basic_helm.yaml"},
+					[]string{},
+					[]model.DBUser{
+						*model.NewDBUser("admin").
+							WithSecretRef("dbuser-secret-u2").
+							AddBuildInAdminRole().
+							WithAuthDatabase("admin"),
+					},
+					30010,
+					[]func(*model.TestDataProvider){},
+				)
+				// helm template has equal ObjectMeta.Name and Spec.Name
+				data.Resources.Clusters[0].ObjectMeta.Name = "cluster-from-helm-upgrade"
+				data.Resources.Clusters[0].Spec.Name = "cluster-from-helm-upgrade"
+			})
+			By("User use helm for last release of operator and deploy his resouces", func() {
+				helm.AddMongoDBRepo()
+				helm.InstallLatestReleaseOperatorNS(data.Resources)
+				deployCluster(&data)
+			})
+			By("User update new released operator", func() {
+				backup := true
+				data.Resources.Clusters[0].Spec.ProviderBackupEnabled = &backup
+				actions.HelmUpgradeChartVersions(&data)
+				actions.CheckUsersCanUseOldApp(&data)
+			})
+			By("Delete Resources", func() {
+				deleteClusterAndOperator(&data)
+			})
 		})
 	})
 })
@@ -138,7 +180,7 @@ func deployCluster(data *model.TestDataProvider) {
 	})
 
 	By("Deploy application for user", func() {
-		actions.CheckUsersCanUseApplication(data.PortGroup, data.Resources)
+		actions.CheckUsersCanUseApp(data)
 	})
 }
 
