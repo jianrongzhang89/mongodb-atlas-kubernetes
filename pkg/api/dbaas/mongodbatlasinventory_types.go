@@ -14,11 +14,14 @@ limitations under the License.
 package dbaas
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/metrics"
 	kube "github.com/mongodb/mongodb-atlas-kubernetes/pkg/util/kube"
 )
 
@@ -80,6 +83,7 @@ func SetInventoryCondition(inv *MongoDBAtlasInventory, condType string, status m
 				Reason:             reason,
 				Message:            msg,
 			}
+			setInventoryMetrics(inv, status, lastTransitionTime, reason)
 			return
 		}
 	}
@@ -93,6 +97,7 @@ func SetInventoryCondition(inv *MongoDBAtlasInventory, condType string, status m
 		Reason:             reason,
 		Message:            msg,
 	})
+	setInventoryMetrics(inv, status, now, reason)
 }
 
 // GetInventoryCondition return the condition with the passed condition type from
@@ -104,4 +109,55 @@ func GetInventoryCondition(inv *MongoDBAtlasInventory, condType string) *metav1.
 		}
 	}
 	return nil
+}
+
+func setInventoryMetrics(inv *MongoDBAtlasInventory, status metav1.ConditionStatus, lastTransitionTime metav1.Time, reason string) {
+	if status == metav1.ConditionTrue {
+		setInventoryElapsedTime(inv, lastTransitionTime)
+		setInventoryStatusReady(inv, 1)
+	} else {
+		resetInventoryElapsedTime(inv)
+		setInventoryStatusReady(inv, 0)
+	}
+	setInventoryStatusReason(inv, reason)
+}
+
+func setInventoryElapsedTime(inv *MongoDBAtlasInventory, lastTransitionTime metav1.Time) {
+	metrics.InventoryElapsedTime.With(prometheus.Labels{
+		"provider":  metrics.DBaaSProvider,
+		"inventory": inv.Name,
+		"namespace": inv.Namespace}).Set(lastTransitionTime.Sub(inv.CreationTimestamp.Time).Seconds())
+}
+
+func resetInventoryElapsedTime(inv *MongoDBAtlasInventory) {
+	metrics.InventoryElapsedTime.Delete(prometheus.Labels{
+		"provider":  metrics.DBaaSProvider,
+		"inventory": inv.Name,
+		"namespace": inv.Namespace})
+}
+
+func setInventoryStatusReady(inventory *MongoDBAtlasInventory, val float64) {
+	metrics.InventoryStatusReady.With(prometheus.Labels{
+		"provider":  metrics.DBaaSProvider,
+		"inventory": inventory.Name,
+		"namespace": inventory.Namespace}).Set(val)
+}
+
+func resetInventoryStatusReasons(inv *MongoDBAtlasInventory) {
+	for _, reason := range workflow.GetMongoDBAtlasInventoryReasons() {
+		metrics.InventoryStatusReason.With(prometheus.Labels{
+			"provider":  metrics.DBaaSProvider,
+			"inventory": inv.Name,
+			"namespace": inv.Namespace,
+			"reason":    string(reason)}).Set(0)
+	}
+}
+
+func setInventoryStatusReason(inv *MongoDBAtlasInventory, reason string) {
+	resetInventoryStatusReasons(inv)
+	metrics.InventoryStatusReason.With(prometheus.Labels{
+		"provider":  metrics.DBaaSProvider,
+		"inventory": inv.Name,
+		"namespace": inv.Namespace,
+		"reason":    reason}).Set(1)
 }

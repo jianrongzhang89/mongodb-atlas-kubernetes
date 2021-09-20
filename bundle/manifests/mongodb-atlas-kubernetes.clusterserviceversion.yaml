@@ -95,7 +95,7 @@ metadata:
     description: The MongoDB Atlas Kubernetes Operator enables easy management of Clusters in MongoDB Atlas
     operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: mongodb-atlas-kubernetes.v0.6.1
+  name: mongodb-atlas-kubernetes.v0.6.37
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -420,6 +420,10 @@ spec:
           strategy: {}
           template:
             metadata:
+              annotations:
+                prometheus.io/path: /metrics
+                prometheus.io/port: "8080"
+                prometheus.io/scrape: "true"
               labels:
                 app.kubernetes.io/component: controller
                 app.kubernetes.io/instance: mongodb-atlas-kubernetes-operator
@@ -442,7 +446,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: registry.connect.redhat.com/mongodb/mongodb-atlas-kubernetes-operator:0.6.1
+                image: quay.io/ecosystem-appeng/mongodb-atlas-operator:0.6.37
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -517,6 +521,4 @@ spec:
   maturity: beta
   provider:
     name: MongoDB, Inc
-  version: 0.6.1
-  replaces: mongodb-atlas-kubernetes.v0.6.0
-  
+  version: 0.6.37

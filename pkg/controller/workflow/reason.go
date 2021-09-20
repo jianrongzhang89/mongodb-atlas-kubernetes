@@ -46,6 +46,17 @@ const (
 	MongoDBAtlasInventoryAuthenticationError ConditionReason = "AuthenticationError"
 )
 
+// GetMongoDBAtlasInventoryReasons provides the list of MongoDBAtlasInventory reasons
+func GetMongoDBAtlasInventoryReasons() []ConditionReason {
+	return []ConditionReason{
+		MongoDBAtlasInventorySyncOK,
+		MongoDBAtlasInventoryInputError,
+		MongoDBAtlasInventoryBackendError,
+		MongoDBAtlasInventoryEndpointUnreachable,
+		MongoDBAtlasInventoryAuthenticationError,
+	}
+}
+
 // MongoDBAtlasConnection reasons
 const (
 	MongoDBAtlasConnectionReady               ConditionReason = "Ready"
@@ -57,3 +68,17 @@ const (
 	MongoDBAtlasConnectionAuthenticationError ConditionReason = "AuthenticationError"
 	MongoDBAtlasConnectionInprogress          ConditionReason = "Inprogress"
 )
+
+// GetMongoDBAtlasConnectionReasons provides the list of MongoDBAtlasConnection reasons
+func GetMongoDBAtlasConnectionReasons() []ConditionReason {
+	return []ConditionReason{
+		MongoDBAtlasConnectionReady,
+		MongoDBAtlasConnectionAtlasUnreachable,
+		MongoDBAtlasConnectionInventoryNotReady,
+		MongoDBAtlasConnectionInventoryNotFound,
+		MongoDBAtlasConnectionInstanceIDNotFound,
+		MongoDBAtlasConnectionBackendError,
+		MongoDBAtlasConnectionAuthenticationError,
+		MongoDBAtlasConnectionInprogress,
+	}
+}

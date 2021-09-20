@@ -70,6 +70,11 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 
 	atlas.ProductVersion = version
+
+	// Register custom metrics with the global prometheus registry
+	//	runtime_metrics.Registry.MustRegister(metrics.OperatorVersion)
+	//	runtime_metrics.Registry.MustRegister(metrics.InventoryElapsedTime)
+
 }
 
 func main() {

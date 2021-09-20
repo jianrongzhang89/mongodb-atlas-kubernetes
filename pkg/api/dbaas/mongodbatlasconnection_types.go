@@ -14,8 +14,12 @@ limitations under the License.
 package dbaas
 
 import (
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -85,6 +89,7 @@ func SetConnectionCondition(conn *MongoDBAtlasConnection, condType string, statu
 				Reason:             reason,
 				Message:            msg,
 			}
+			setConnectionMetrics(conn, status, lastTransitionTime, reason)
 			return
 		}
 	}
@@ -98,6 +103,8 @@ func SetConnectionCondition(conn *MongoDBAtlasConnection, condType string, statu
 		Reason:             reason,
 		Message:            msg,
 	})
+
+	setConnectionMetrics(conn, status, now, reason)
 }
 
 // GetConnectionCondition return the condition with the passed condition type from
@@ -109,4 +116,55 @@ func GetConnectionCondition(conn *MongoDBAtlasConnection, condType string) *meta
 		}
 	}
 	return nil
+}
+
+func setConnectionMetrics(conn *MongoDBAtlasConnection, status metav1.ConditionStatus, lastTransitionTime metav1.Time, reason string) {
+	if status == metav1.ConditionTrue {
+		setConnectionElapsedTime(conn, lastTransitionTime)
+		setConnectionStatusReady(conn, 1)
+	} else {
+		resetConnectionElapsedTime(conn)
+		setConnectionStatusReady(conn, 0)
+	}
+	setConnectionStatusReason(conn, reason)
+}
+
+func setConnectionElapsedTime(conn *MongoDBAtlasConnection, lastTransitionTime metav1.Time) {
+	metrics.ConnectionElapsedTime.With(prometheus.Labels{
+		"provider":   metrics.DBaaSProvider,
+		"connection": conn.Name,
+		"namespace":  conn.Namespace}).Set(lastTransitionTime.Sub(conn.CreationTimestamp.Time).Seconds())
+}
+
+func resetConnectionElapsedTime(conn *MongoDBAtlasConnection) {
+	metrics.ConnectionElapsedTime.Delete(prometheus.Labels{
+		"provider":   metrics.DBaaSProvider,
+		"connection": conn.Name,
+		"namespace":  conn.Namespace})
+}
+
+func setConnectionStatusReady(conn *MongoDBAtlasConnection, val float64) {
+	metrics.ConnectionStatusReady.With(prometheus.Labels{
+		"provider":   metrics.DBaaSProvider,
+		"connection": conn.Name,
+		"namespace":  conn.Namespace}).Set(val)
+}
+
+func resetConnectionStatusReasons(conn *MongoDBAtlasConnection) {
+	for _, reason := range workflow.GetMongoDBAtlasConnectionReasons() {
+		metrics.ConnectionStatusReason.With(prometheus.Labels{
+			"provider":   metrics.DBaaSProvider,
+			"connection": conn.Name,
+			"namespace":  conn.Namespace,
+			"reason":     string(reason)}).Set(0)
+	}
+}
+
+func setConnectionStatusReason(conn *MongoDBAtlasConnection, reason string) {
+	resetConnectionStatusReasons(conn)
+	metrics.ConnectionStatusReason.With(prometheus.Labels{
+		"provider":   metrics.DBaaSProvider,
+		"connection": conn.Name,
+		"namespace":  conn.Namespace,
+		"reason":     reason}).Set(1)
 }

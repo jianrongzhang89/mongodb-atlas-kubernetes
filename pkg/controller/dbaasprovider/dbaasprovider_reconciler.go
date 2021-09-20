@@ -23,9 +23,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	dbaasoperator "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/apps/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -43,6 +45,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/metrics"
 )
 
 const (
@@ -82,7 +86,7 @@ func (r *DBaaSProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		// error fetching deployment, requeue and try again
 		log.Error(err, "error fetching Deployment CR")
-		return ctrl.Result{}, err
+		return updateMetrics(ctrl.Result{}, err)
 	}
 
 	if r.cdrChecker == nil {
@@ -91,12 +95,12 @@ func (r *DBaaSProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	isCrdInstalled, err := r.cdrChecker(dbaasoperator.GroupVersion.String(), dbaasProviderKind)
 	if err != nil {
 		log.Error(err, "error discovering GVK")
-		return ctrl.Result{}, err
+		return updateMetrics(ctrl.Result{}, err)
 	}
 	if !isCrdInstalled {
 		log.Info("CRD not found, requeueing with rate limiter")
 		// returning with 'Requeue: true' will invoke our custom rate limiter seen in SetupWithManager below
-		return ctrl.Result{Requeue: true}, nil
+		return updateMetrics(ctrl.Result{Requeue: true}, nil)
 	}
 
 	instance := &dbaasoperator.DBaaSProvider{
@@ -117,35 +121,35 @@ func (r *DBaaSProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			clusterRoleList := &rbac.ClusterRoleList{}
 			if err := r.List(context.Background(), clusterRoleList, opts); err != nil {
 				log.Error(err, "unable to list ClusterRoles to seek potential operand owners")
-				return ctrl.Result{}, err
+				return updateMetrics(ctrl.Result{}, err)
 			}
 
 			if len(clusterRoleList.Items) < 1 {
 				err := apiErrors.NewNotFound(
 					schema.GroupResource{Group: "rbac.authorization.k8s.io", Resource: "ClusterRole"}, "potentialOwner")
 				log.Error(err, "could not find ClusterRole owned by CSV to inherit operand")
-				return ctrl.Result{}, err
+				return updateMetrics(ctrl.Result{}, err)
 			}
 
 			instance, err := r.getAtlasProviderCR(clusterRoleList)
 			if err != nil {
 				log.Error(err, "error while constructing new cluster-scoped Atlas DbaaS provider CR")
-				return ctrl.Result{}, err
+				return updateMetrics(ctrl.Result{}, err)
 			}
 			if err = r.Create(ctx, instance); err != nil {
 				log.Error(err, "error while creating new cluster-scoped resource")
-				return ctrl.Result{}, err
+				return updateMetrics(ctrl.Result{}, err)
 			} else {
 				log.Info("cluster-scoped resource created")
-				return ctrl.Result{}, nil
+				return updateMetrics(ctrl.Result{}, nil)
 			}
 		}
 		// error fetching the resource, requeue and try again
 		log.Error(err, "error fetching the resource")
-		return ctrl.Result{}, err
+		return updateMetrics(ctrl.Result{}, err)
 	}
 
-	return ctrl.Result{}, nil
+	return updateMetrics(ctrl.Result{}, nil)
 }
 
 // getAtlasProviderCR CR for MongoDB Atlas DBaaS registration
@@ -213,6 +217,9 @@ func (r *DBaaSProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	} else {
 		r.operatorNameVersion = operatorNameEnvVar
+		//operatorNameEnvVar is in the format: mongodb-atlas-kubernetes.v0.0.0
+		version := strings.TrimLeft(operatorNameEnvVar, "mongodb-atlas-kubernetes.")
+		metrics.OperatorVersion.With(prometheus.Labels{"provider": metrics.DBaaSProvider, "operator_version": version}).Set(1)
 	}
 
 	// envVar set for directory for dbaas_provider.yaml
@@ -261,4 +268,14 @@ func (r *DBaaSProviderReconciler) evaluatePredicateObject(obj client.Object) boo
 		}
 	}
 	return false
+}
+
+func updateMetrics(result ctrl.Result, err error) (ctrl.Result, error) {
+	isReady := 0
+	if err == nil {
+		isReady = 1
+	}
+	metrics.DBaaSRegistrationReady.With(prometheus.Labels{
+		"provider": metrics.DBaaSProvider}).Set(float64(isReady))
+	return result, err
 }

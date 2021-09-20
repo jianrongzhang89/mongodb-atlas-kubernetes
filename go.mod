@@ -16,6 +16,7 @@ require (
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/pborman/uuid v1.2.1
+	github.com/prometheus/client_golang v1.7.1
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/atlas v0.7.3-0.20210315115044-4b1d3f428c24

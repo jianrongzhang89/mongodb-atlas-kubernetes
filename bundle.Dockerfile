@@ -1,7 +1,4 @@
 FROM scratch
-LABEL com.redhat.openshift.versions="v4.5-v4.8"
-LABEL com.redhat.delivery.backport=true
-LABEL com.redhat.delivery.operator.bundle=true
 
 # Core bundle labels.
 LABEL operators.operatorframework.io.bundle.mediatype.v1=registry+v1
