@@ -103,6 +103,7 @@ metadata:
     capabilities: Basic Install
     categories: Database
 <<<<<<< HEAD
+<<<<<<< HEAD
     description: The MongoDB Atlas Kubernetes Operator enables easy management of
       Clusters in MongoDB Atlas
     operators.operatorframework.io/builder: operator-sdk-v1.16.0
@@ -111,9 +112,21 @@ metadata:
 =======
     description: The MongoDB Atlas Kubernetes Operator enables easy management of Clusters in MongoDB Atlas
     operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
+=======
+    description: The MongoDB Atlas Kubernetes Operator enables easy management of
+      Clusters in MongoDB Atlas
+    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
+>>>>>>> dbaas bundle build
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+<<<<<<< HEAD
   name: mongodb-atlas-kubernetes.v0.7.0
+<<<<<<< HEAD
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
+=======
+=======
+  name: mongodb-atlas-kubernetes.v0.1.0
+>>>>>>> dbaas bundle build
+>>>>>>> dbaas bundle build
   namespace: placeholder
 spec:
   apiservicedefinitions: { }
@@ -154,12 +167,14 @@ spec:
       kind: AtlasProject
       name: atlasprojects.atlas.mongodb.com
       version: v1
-    - description: MongoDBAtlasConnection is the Schema for the MongoDBAtlasConnections API
+    - description: MongoDBAtlasConnection is the Schema for the MongoDBAtlasConnections
+        API
       displayName: Mongo DBAtlas Connection
       kind: MongoDBAtlasConnection
       name: mongodbatlasconnections.dbaas.redhat.com
       version: v1alpha1
-    - description: MongoDBAtlasInventory is the Schema for the MongoDBAtlasInventory API
+    - description: MongoDBAtlasInventory is the Schema for the MongoDBAtlasInventory
+        API
       displayName: Mongo DBAtlas Inventory
       kind: MongoDBAtlasInventory
       name: mongodbatlasinventories.dbaas.redhat.com
@@ -598,6 +613,7 @@ spec:
                 app.kubernetes.io/component: controller
                 app.kubernetes.io/instance: mongodb-atlas-kubernetes-operator
                 app.kubernetes.io/name: mongodb-atlas-kubernetes-operator
+<<<<<<< HEAD
             strategy: { }
             template:
               metadata:
@@ -655,6 +671,56 @@ spec:
                       allowPrivilegeEscalation: false
                 serviceAccountName: mongodb-atlas-operator
                 terminationGracePeriodSeconds: 10
+=======
+            spec:
+              containers:
+              - args:
+                - --atlas-domain=https://cloud.mongodb.com
+                - --leader-elect
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                command:
+                - /manager
+                env:
+                - name: OPERATOR_POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+<<<<<<< HEAD
+                image: registry.connect.redhat.com/mongodb/mongodb-atlas-kubernetes-operator:0.7.0
+=======
+                image: quay.io/mongodb/mongodb-atlas-kubernetes-dbaas:0.1.0
+>>>>>>> dbaas bundle build
+                imagePullPolicy: Always
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 256Mi
+                  requests:
+                    cpu: 100m
+                    memory: 50Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+              serviceAccountName: mongodb-atlas-operator
+              terminationGracePeriodSeconds: 10
+>>>>>>> dbaas bundle build
       permissions:
         - rules:
             - apiGroups:
@@ -704,5 +770,14 @@ spec:
   maturity: beta
   provider:
     name: MongoDB, Inc
+<<<<<<< HEAD
   version: 0.8.0
   replaces: mongodb-atlas-kubernetes.v0.7.0
+=======
+<<<<<<< HEAD
+  version: 0.7.0
+  replaces: mongodb-atlas-kubernetes.v0.6.1
+=======
+  version: 0.1.0
+>>>>>>> dbaas bundle build
+>>>>>>> dbaas bundle build

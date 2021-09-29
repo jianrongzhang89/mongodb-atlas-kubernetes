@@ -50,13 +50,14 @@ CATALOG_IMAGE ?= ${CATALOG_REGISTRY}:${VERSION}
 TARGET_NAMESPACE ?= mongodb-atlas-operator-system-test
 =======
 # Image URL to use all building/pushing image targets
-IMG ?= controller:$(VERSION)
+IMG ?= controller
+IMGVERSION ?= $(IMG):$(VERSION)
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
+BUNDLE_IMG ?= $(IMG)-bundle:$(VERSION)
 
 # The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:0.2.0).
-CATALOG_IMG ?= controller-catalog:$(VERSION)
+CATALOG_IMG ?= $(IMG)-catalog:latest
 
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -164,11 +165,8 @@ endef
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, update security context for OpenShift, then validate generated files.
 	operator-sdk generate kustomize manifests -q --apis-dir=pkg/api
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	sed -i .bak '/runAsNonRoot: true/d' "./bundle/manifests/mongodb-atlas-kubernetes.clusterserviceversion.yaml"
-	sed -i .bak '/runAsUser: 1000380001/d' "./bundle/manifests/mongodb-atlas-kubernetes.clusterserviceversion.yaml"
-	rm ./bundle/manifests/*.bak
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMGVERSION)
+	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --manifests --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 .PHONY: image
@@ -236,11 +234,11 @@ bundle-push: ## Push the bundle image.
 	docker push $(BUNDLE_IMG)
 
 docker-build: ## Build the docker image
-	docker build -t ${IMG} .
+	docker build -t $(IMGVERSION) .
 
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 docker-push: ## Push the docker image
-	docker push ${IMG}
+	docker push $(IMGVERSION)
 
 # Additional make goals
 .PHONY: run-kind
