@@ -7,9 +7,13 @@ LABEL com.redhat.openshift.versions="v4.5-v4.7"
 =======
 
 # RH OLM annotations
+<<<<<<< HEAD
 >>>>>>> dbaas bundle build
 LABEL com.redhat.openshift.versions="v4.5-v4.8"
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
+=======
+LABEL com.redhat.openshift.versions="v4.5,v4.6"
+>>>>>>> add RH annotations
 LABEL com.redhat.delivery.backport=true
 LABEL com.redhat.delivery.operator.bundle=true
 
