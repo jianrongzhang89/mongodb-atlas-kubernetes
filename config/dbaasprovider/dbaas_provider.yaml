@@ -15,6 +15,8 @@ spec:
       mediatype: image/png
   inventoryKind: MongoDBAtlasInventory
   connectionKind: MongoDBAtlasConnection
+  instanceKind: MongoDBAtlasInstance
+  allowsFreeTrial: true
   credentialFields:
     - key: orgId
       displayName: Organization ID
@@ -28,4 +30,122 @@ spec:
       displayName: Private API Key
       type: maskedstring
       required: true
+  instanceParameterSpecs:
+    - name: clusterType
+      displayName: Cluster Type
+      type: string
+      required: true
+      isKeyValue: false
+      subParameters:
+        - name: cloudProvider
+          displayName: Cloud Provider
+          type: string
+          required: true
+          isKeyValue: false
+          subParameters:
+            - name: cloudRegion
+              displayName: Cloud Region
+              type: string
+              required: true
+              isKeyValue: true
+            - name: clusterTier
+              displayName: Cluster Tier
+              type: string
+              required: true
+              isKeyValue: true
+            - name: clusterName
+              displayName: Cluster Name
+              type: string
+              required: true
+              isKeyValue: false
+  instanceParameterSpecs:
+    - name: clusterType
+      value: Shared
+      isDefault: true
+      subValues:
+        - name: cloudProvider
+          value: AWS
+          isDefault: true
+          subValues:
+            - name: cloudRegion
+              key: us-east-1
+              value: N. Virginia
+              isDefault: true
+            - name: cloudRegion
+              key: us-west-2
+              value: Oregon
+              isDefault: false
+        - name: cloudProvider
+          value: GCE
+          isDefault: false
+          subValues:
+            - name: cloudRegion
+              key: southamerica-east1
+              value: Sao Paulo
+              isDefault: false
+            - name: cloudRegion
+              key: us-central1
+              value: Ohio
+              isDefault: true
+        - name: clusterTier
+          key: M0
+          value: Shared RAM, 512MB Storage, free with limit of one per project
+          isDefault: true
+        - name: clusterTier
+          key: M2
+          value: Shared RAM, 2GB Storage, $9 per month
+          isDefault: false
+        - name: clusterTier
+          key: M5
+          value: Shared RAM, 5GB Storage, $25 per month
+          isDefault: false
+    - name: clusterType
+      value: Dedicated
+      isDefault: false
+      subValues:
+        - name: cloudProvider
+          value: AWS
+          isDefault: true
+          subValues:
+            - name: cloudRegion
+              key: us-east-1
+              value: N. Virginia
+              isDefault: false
+            - name: cloudRegion
+              key: us-east-2
+              value: Ohio
+              isDefault: false
+            - name: cloudRegion
+              key: us-west-1
+              value: N. California
+              isDefault: false
+            - name: cloudRegion
+              key: us-west-2
+              value: Oregon
+              isDefault: false
+        - name: cloudProvider
+          value: GCE
+          isDefault: false
+          subValues:
+            - name: cloudRegion
+              key: southamerica-east1
+              value: Sao Paulo
+              isDefault: false
+            - name: cloudRegion
+              key: us-central1
+              value: Ohio
+              isDefault: false
+            - name: cloudRegion
+              key: us-west1
+              value: Oregon
+              isDefault: true
+        - name: clusterTier
+          key: M10
+          value: 2GB RAM, 10GB Storage, 2 vCPUs, from $0.08 per hour
+          isDefault: true
+        - name: clusterTier
+          key: M20
+          value: 4GB RAM, 20GB Storage, 2 vCPUs, from $0.20 per hour
+          isDefault: false
+
 
