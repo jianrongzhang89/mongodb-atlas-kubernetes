@@ -1,0 +1,12 @@
+apiVersion: dbaas.redhat.com/v1alpha1
+kind: MongoDBAtlasInstance
+metadata:
+  name: test-instance-atlas
+  namespace: mongodb-atlas-system
+spec:
+  inventoryRef:
+    name: test-inventory
+    namespace: mongodb-atlas-system
+  parametersRef:
+    name: test-aws-free-instance-params
+    namespace: mongodb-atlas-system

@@ -18,26 +18,29 @@ package atlasinventory
 
 import (
 	"context"
+	"reflect"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"go.mongodb.org/atlas/mongodbatlas"
-
+	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	dbaas "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
-	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/status"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/atlas"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/watch"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 // MongoDBAtlasInventoryReconciler reconciles a MongoDBAtlasInventory object
@@ -65,7 +68,7 @@ type MongoDBAtlasInventoryReconciler struct {
 func (r *MongoDBAtlasInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = ctx
 	log := r.Log.With("MongoDBAtlasInventory", req.NamespacedName)
-
+	log.Info("Reconciling MongoDBAtlasInventory")
 	inventory := &dbaas.MongoDBAtlasInventory{}
 	if err := r.Client.Get(ctx, req.NamespacedName, inventory); err != nil {
 		if errors.IsNotFound(err) {
@@ -91,7 +94,7 @@ func (r *MongoDBAtlasInventoryReconciler) Reconcile(ctx context.Context, req ctr
 
 	if secretKey == nil {
 		result := workflow.Terminate(workflow.MongoDBAtlasInventoryInputError, "Secret name for atlas credentials is missing")
-		dbaas.SetInventoryCondition(inventory, string(status.MongoDBAtlasInventoryReadyType), metav1.ConditionFalse, string(result.Reason()), result.Message())
+		dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		return result.ReconcileResult(), nil
 	} else {
 		// Note, that we are not watching the global connection secret - seems there is no point in reconciling all
@@ -101,7 +104,7 @@ func (r *MongoDBAtlasInventoryReconciler) Reconcile(ctx context.Context, req ctr
 	atlasConn, err := atlas.ReadConnection(log, r.Client, r.GlobalAPISecret, inventory.ConnectionSecretObjectKey())
 	if err != nil {
 		result := workflow.Terminate(workflow.MongoDBAtlasInventoryInputError, err.Error())
-		dbaas.SetInventoryCondition(inventory, string(status.MongoDBAtlasInventoryReadyType), metav1.ConditionFalse, string(result.Reason()), result.Message())
+		dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		return result.ReconcileResult(), nil
 	}
 	atlasClient := r.AtlasClient
@@ -109,19 +112,19 @@ func (r *MongoDBAtlasInventoryReconciler) Reconcile(ctx context.Context, req ctr
 		cl, err := atlas.Client(r.AtlasDomain, atlasConn, log)
 		if err != nil {
 			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
-			dbaas.SetInventoryCondition(inventory, string(status.MongoDBAtlasInventoryReadyType), metav1.ConditionFalse, string(result.Reason()), result.Message())
+			dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return result.ReconcileResult(), nil
 		}
 		atlasClient = &cl
 	}
 	inventoryList, result := discoverInstances(atlasClient)
 	if !result.IsOk() {
-		dbaas.SetInventoryCondition(inventory, string(status.MongoDBAtlasInventoryReadyType), metav1.ConditionFalse, string(result.Reason()), result.Message())
+		dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		return result.ReconcileResult(), nil
 	}
 
 	// Update the status
-	dbaas.SetInventoryCondition(inventory, string(status.MongoDBAtlasInventoryReadyType), metav1.ConditionTrue, string(workflow.MongoDBAtlasInventorySyncOK), "Spec sync OK")
+	dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionTrue, string(workflow.MongoDBAtlasInventorySyncOK), "Spec sync OK")
 	inventory.Status.Instances = inventoryList
 	return ctrl.Result{}, nil
 }
@@ -138,7 +141,17 @@ func (r *MongoDBAtlasInventoryReconciler) SetupWithManager(mgr ctrl.Manager) err
 	}
 
 	// Watch for changes to primary resource MongoDBAtlasInventory & handle delete separately
-	err = c.Watch(&source.Kind{Type: &dbaas.MongoDBAtlasInventory{}}, &watch.EventHandlerWithDelete{Controller: r}, watch.CommonPredicates())
+	err = c.Watch(&source.Kind{Type: &dbaas.MongoDBAtlasInventory{}},
+		&watch.EventHandlerWithDelete{Controller: r},
+		watch.CommonPredicates())
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to other resource MongoDBAtlasInstance
+	err = c.Watch(&source.Kind{Type: &dbaas.MongoDBAtlasInstance{}},
+		handler.EnqueueRequestsFromMapFunc(instanceMapFunc),
+		instanceMapPredicate())
 	if err != nil {
 		return err
 	}
@@ -149,4 +162,42 @@ func (r *MongoDBAtlasInventoryReconciler) SetupWithManager(mgr ctrl.Manager) err
 		return err
 	}
 	return nil
+}
+
+// instanceMapFunc defines a function for EnqueueRequestsFromMapFunc so that when a MongoDBAtlasInstance
+// CR status is updated or the CR is deleted, the corresponding inventory is enqueued in order to refresh
+// the instance list
+func instanceMapFunc(a client.Object) []ctrl.Request {
+	if instance, ok := a.(*dbaas.MongoDBAtlasInstance); ok {
+		return []ctrl.Request{
+			{NamespacedName: types.NamespacedName{
+				Name:      instance.Spec.InventoryRef.Name,
+				Namespace: instance.Spec.InventoryRef.Namespace,
+			},
+			}}
+	}
+	return nil
+}
+
+// instanceMapPredicate filters out unnecessary events
+func instanceMapPredicate() predicate.Funcs {
+	return predicate.Funcs{
+		//Do not enqueue create events
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		//For update events, only status change should be enqueued
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			new := e.ObjectNew.(*dbaas.MongoDBAtlasInstance)
+			old := e.ObjectOld.(*dbaas.MongoDBAtlasInstance)
+			if reflect.DeepEqual(new.Status, old.Status) {
+				return false
+			}
+			return true
+		},
+		//Delete events should be enqueued
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+	}
 }

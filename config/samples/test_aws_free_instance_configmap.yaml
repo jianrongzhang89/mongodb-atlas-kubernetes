@@ -1,0 +1,11 @@
+kind: ConfigMap 
+apiVersion: v1 
+metadata:
+  name: test-aws-free-instance-params
+  namespace: mongodb-atlas-system
+data:
+  project: my-atlas-project
+  clusterName: my-cluster
+  cloudProvider: AWS
+  cloudRegion: US_EAST_1
+  instanceSizeName: M0

@@ -26,16 +26,24 @@ func discoverInstances(atlasClient *mongodbatlas.Client) ([]dbaasv1alpha1.Instan
 			return nil, workflow.Terminate(getReasonFromResponse(response), err.Error())
 		}
 		for _, cluster := range clusters {
+			if cluster.StateName != "IDLE" && cluster.StateName != "UPDATING" {
+				continue
+			}
+			provider := cluster.ProviderSettings.BackingProviderName
+			if len(provider) == 0 {
+				provider = cluster.ProviderSettings.ProviderName
+			}
 			clusterSvc := dbaasv1alpha1.Instance{
 				InstanceID: cluster.ID,
 				Name:       cluster.Name,
 				InstanceInfo: map[string]string{
 					dbaas.InstanceSizeNameKey:             cluster.ProviderSettings.InstanceSizeName,
-					dbaas.CloudProviderKey:                cluster.ProviderSettings.ProviderName,
+					dbaas.CloudProviderKey:                provider,
 					dbaas.CloudRegionKey:                  cluster.ProviderSettings.RegionName,
 					dbaas.ProjectIDKey:                    p.ID,
 					dbaas.ProjectNameKey:                  p.Name,
 					dbaas.ConnectionStringsStandardSrvKey: cluster.ConnectionStrings.StandardSrv,
+					"StateName":                           cluster.StateName,
 				},
 			}
 			instanceList = append(instanceList, clusterSvc)
