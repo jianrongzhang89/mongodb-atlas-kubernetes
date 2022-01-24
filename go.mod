@@ -3,7 +3,7 @@ module github.com/mongodb/mongodb-atlas-kubernetes
 go 1.15
 
 require (
-	github.com/RHEcosystemAppEng/dbaas-operator v1.0.0
+	github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220119182017-47ff2e6c4905
 	github.com/fatih/structtag v1.2.0
 	github.com/fgrosse/zaptest v1.1.0
 	github.com/go-logr/zapr v0.4.0
@@ -30,5 +30,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.9.0
 )
 
-// replace github.com/RHEcosystemAppEng/dbaas-operator v1.0.0 => github.com/RHEcosystemAppEng/dbaas-operator v1.0.1-0.20210728155403-fcf7cfba855c
-replace github.com/RHEcosystemAppEng/dbaas-operator v1.0.0 => github.com/xieshenzh/dbaas-operator v1.0.1-0.20220110220154-ce3fb7f17e6e
+replace github.com/RHEcosystemAppEng/dbaas-operator v1.0.0 => github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220119182017-47ff2e6c4905

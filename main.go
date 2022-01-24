@@ -222,6 +222,7 @@ type Config struct {
 	WatchedNamespaces    string
 	ProbeAddr            string
 	GlobalAPISecret      client.ObjectKey
+	SyncPeriod           time.Duration
 }
 
 // ParseConfiguration fills the 'OperatorConfig' from the flags passed to the program
@@ -236,6 +237,9 @@ func parseConfiguration(log *zap.SugaredLogger) Config {
 	flag.BoolVar(&config.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	var syncPeriodMin int
+	flag.IntVar(&syncPeriodMin, "sync-period-min", 5, "The minimum interval in minutes at which watched resources are reconciled, default to 180 (e.g. 3h)")
+	config.SyncPeriod = time.Minute * time.Duration(syncPeriodMin)
 
 	flag.Parse()
 

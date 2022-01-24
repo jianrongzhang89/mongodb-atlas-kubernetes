@@ -23,6 +23,7 @@ const (
 	CloudRegionKey      = "regionName"
 	ProjectIDKey        = "projectID"
 	ProjectNameKey      = "projectName"
+	ProvisionPhaseKey   = "phase"
 	InstanceSizeNameKey = "instanceSizeName"
 	ClusterNameKey      = "clusterName"
 

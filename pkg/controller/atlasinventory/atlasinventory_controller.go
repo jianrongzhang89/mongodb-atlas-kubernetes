@@ -101,22 +101,17 @@ func (r *MongoDBAtlasInventoryReconciler) Reconcile(ctx context.Context, req ctr
 		// the services once that secret is changed
 		r.EnsureResourcesAreWatched(req.NamespacedName, "Secret", log, *secretKey)
 	}
-	atlasConn, err := atlas.ReadConnection(log, r.Client, r.GlobalAPISecret, inventory.ConnectionSecretObjectKey())
-	if err != nil {
-		result := workflow.Terminate(workflow.MongoDBAtlasInventoryInputError, err.Error())
-		dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
-		return result.ReconcileResult(), nil
-	}
+
 	atlasClient := r.AtlasClient
 	if atlasClient == nil {
-		cl, err := atlas.Client(r.AtlasDomain, atlasConn, log)
-		if err != nil {
-			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
+		cl, result := GetAtlasClient(log, r.Client, r.AtlasDomain, r.GlobalAPISecret, inventory)
+		if !result.IsOk() {
 			dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return result.ReconcileResult(), nil
 		}
-		atlasClient = &cl
+		atlasClient = cl
 	}
+
 	inventoryList, result := discoverInstances(atlasClient)
 	if !result.IsOk() {
 		dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
@@ -200,4 +195,17 @@ func instanceMapPredicate() predicate.Funcs {
 			return true
 		},
 	}
+}
+
+//GetAtlasClient returns the Atlas Client
+func GetAtlasClient(log *zap.SugaredLogger, kubeClient client.Client, atlasDomain string, operatorAPISecret types.NamespacedName, inventory *dbaas.MongoDBAtlasInventory) (*mongodbatlas.Client, workflow.Result) {
+	atlasConn, err := atlas.ReadConnection(log, kubeClient, operatorAPISecret, inventory.ConnectionSecretObjectKey())
+	if err != nil {
+		return nil, workflow.Terminate(workflow.MongoDBAtlasInventoryInputError, err.Error())
+	}
+	atlasClient, err := atlas.Client(atlasDomain, atlasConn, log)
+	if err != nil {
+		return nil, workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
+	}
+	return &atlasClient, workflow.OK()
 }

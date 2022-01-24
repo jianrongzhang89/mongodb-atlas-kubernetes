@@ -62,11 +62,11 @@ const (
 
 // MongoDBAtlasInstance reasons
 const (
-	MongoDBAtlasInstanceReady                   ConditionReason = "Ready"
-	MongoDBAtlasInstanceAtlasUnreachable        ConditionReason = "Unreachable"
-	MongoDBAtlasInstanceInventoryNotFound       ConditionReason = "InventoryNotFound"
-	MongoDBAtlasInstanceParamsConfigMapNotFound ConditionReason = "ParamsConfigMapNotFound"
-	MongoDBAtlasInstanceBackendError            ConditionReason = "BackendError"
-	MongoDBAtlasInstanceAuthenticationError     ConditionReason = "AuthenticationError"
-	MongoDBAtlasInstanceInprogress              ConditionReason = "Inprogress"
+	MongoDBAtlasInstanceReady               ConditionReason = "Ready"
+	MongoDBAtlasInstanceAtlasUnreachable    ConditionReason = "Unreachable"
+	MongoDBAtlasInstanceInventoryNotFound   ConditionReason = "InventoryNotFound"
+	MongoDBAtlasInstanceClusterNotFound     ConditionReason = "AtlasClusterNotFound"
+	MongoDBAtlasInstanceBackendError        ConditionReason = "BackendError"
+	MongoDBAtlasInstanceAuthenticationError ConditionReason = "AuthenticationError"
+	MongoDBAtlasInstanceInprogress          ConditionReason = "Inprogress"
 )

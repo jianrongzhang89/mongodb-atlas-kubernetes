@@ -46,6 +46,7 @@ import (
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/project"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/provider"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/status"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/atlasinventory"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/watch"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/util/kube"
@@ -70,48 +71,6 @@ type InstanceData struct {
 	ProviderName     string
 	RegionName       string
 	InstanceSizeName string
-}
-
-func getInstanceData(log *zap.SugaredLogger, inst *dbaas.MongoDBAtlasInstance) (*InstanceData, error) {
-	if len(inst.Spec.Name) == 0 {
-		log.Errorf("Missing %v", dbaas.ClusterNameKey)
-		return nil, fmt.Errorf("Missing %v", dbaas.ClusterNameKey)
-	}
-	provider := strings.ToUpper(inst.Spec.CloudProvider)
-	if len(provider) == 0 {
-		provider = "AWS"
-		log.Infof("%v is missing, default value of AWS is used", dbaas.CloudProviderKey)
-	}
-	region := inst.Spec.CloudRegion
-	if len(region) == 0 {
-		switch provider {
-		case "AWS":
-			region = "US_EAST_1"
-		case "GCE":
-			region = "CENTRAL_US"
-		case "AZURE":
-			region = "US_WEST"
-		}
-		log.Infof("%v is missing, default value of %s is used", dbaas.CloudProviderKey, region)
-	}
-	projectName, ok := inst.Spec.OtherInstanceParams[dbaas.ProjectNameKey]
-	if !ok {
-		log.Errorf("Missing %v", dbaas.ProjectNameKey)
-		return nil, fmt.Errorf("Missing %v", dbaas.ProjectNameKey)
-	}
-	instanceSizeName, ok := inst.Spec.OtherInstanceParams[dbaas.InstanceSizeNameKey]
-	if !ok {
-		log.Infof("%v is missing, default value of M0 is used", dbaas.InstanceSizeNameKey)
-		instanceSizeName = "M0"
-	}
-
-	return &InstanceData{
-		ProjectName:      projectName,
-		ClusterName:      inst.Spec.Name,
-		ProviderName:     provider,
-		RegionName:       region,
-		InstanceSizeName: instanceSizeName,
-	}, nil
 }
 
 // Dev note: duplicate the permissions in both sections below to generate both Role and ClusterRoles
@@ -167,7 +126,7 @@ func (r *MongoDBAtlasInstanceReconciler) Reconcile(cx context.Context, req ctrl.
 	}
 	instData, err := getInstanceData(log, inst)
 	if err != nil {
-		log.Error(err, "Invalid configmap data")
+		log.Error(err, "Invalid parameters")
 		return ctrl.Result{}, err
 	}
 
@@ -185,7 +144,7 @@ func (r *MongoDBAtlasInstanceReconciler) Reconcile(cx context.Context, req ctrl.
 		if apiErrors.IsNotFound(err) {
 			// The corresponding Atlas Cluster is not found, no reqeue.
 			log.Info("Atlas Cluster resource not found, has been deleted")
-			result := workflow.InProgress(workflow.MongoDBAtlasInstanceParamsConfigMapNotFound, "ConfigMap not found")
+			result := workflow.InProgress(workflow.MongoDBAtlasInstanceClusterNotFound, "Atlas Cluster not found")
 			dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, nil
 		}
@@ -193,44 +152,21 @@ func (r *MongoDBAtlasInstanceReconciler) Reconcile(cx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// Set the phase based on AtlasCluster state
-	// pending - creation not yet started
-	// creating - provisioning in progress
-	// updating - cluster updating in progress
-	// deleting - cluster deletion in progress
-	// deleted - cluster has been deleted
-	// ready - cluster provisioning complete
-	statusFound := false
-	inst.Status.Name = ""
-	for _, cond := range atlasCluster.Status.Conditions {
-		if cond.Type == status.ClusterReadyType {
-			statusFound = true
-			if atlasCluster.Status.StateName == "IDLE" {
-				inst.Status.Phase = "ready"
-			} else {
-				inst.Status.Phase = strings.ToLower(atlasCluster.Status.StateName)
-			}
-			if cond.Status == "True" {
-				inst.Status.Name = atlasCluster.Name
-				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
-			} else {
-				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), cond.Reason, cond.Message)
-			}
+	atlasClient := r.AtlasClient
+	if atlasClient == nil {
+		cl, result := atlasinventory.GetAtlasClient(log, r.Client, r.AtlasDomain, r.GlobalAPISecret, inventory)
+		if !result.IsOk() {
+			dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			return result.ReconcileResult(), nil
 		}
+		atlasClient = cl
 	}
-	if statusFound == false {
-		statusFound = true
-		inst.Status.Phase = "pending"
-		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, "Pending", "Waiting for cluster creation to start")
+	result := setInstanceStatusWithClusterInfo(atlasClient, inst, atlasCluster, atlasProject.Spec.Name)
+	if !result.IsOk() {
+		log.Infof("Error setting instance status: %v", result.Message())
+		return ctrl.Result{}, fmt.Errorf(string(result.Message()))
 	}
 	return ctrl.Result{}, nil
-}
-
-func instanceMutateFn(inst *dbaas.MongoDBAtlasInstance, atlasCluster *v1.AtlasCluster, data *InstanceData) controllerutil.MutateFn {
-	return func() error {
-		atlasCluster.Spec = *getAtlasClusterSpec(inst, data)
-		return nil
-	}
 }
 
 func (r *MongoDBAtlasInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -346,4 +282,87 @@ func getOwnedAtlasCluster(instance *dbaas.MongoDBAtlasInstance, data *InstanceDa
 			},
 		},
 	}
+}
+
+func getInstanceData(log *zap.SugaredLogger, inst *dbaas.MongoDBAtlasInstance) (*InstanceData, error) {
+	if len(inst.Spec.Name) == 0 {
+		log.Errorf("Missing %v", dbaas.ClusterNameKey)
+		return nil, fmt.Errorf("Missing %v", dbaas.ClusterNameKey)
+	}
+	projectName, ok := inst.Spec.OtherInstanceParams[dbaas.ProjectNameKey]
+	if !ok || len(projectName) == 0 {
+		log.Errorf("Missing %v", dbaas.ProjectNameKey)
+		return nil, fmt.Errorf("Missing %v", dbaas.ProjectNameKey)
+	}
+	provider := strings.ToUpper(inst.Spec.CloudProvider)
+	if len(provider) == 0 {
+		provider = "AWS"
+		log.Infof("%v is missing, default value of AWS is used", dbaas.CloudProviderKey)
+	}
+	region := inst.Spec.CloudRegion
+	if len(region) == 0 {
+		switch provider {
+		case "AWS":
+			region = "US_EAST_1"
+		case "GCE":
+			region = "CENTRAL_US"
+		case "AZURE":
+			region = "US_WEST"
+		}
+		log.Infof("%v is missing, default value of %s is used", dbaas.CloudProviderKey, region)
+	}
+	instanceSizeName, ok := inst.Spec.OtherInstanceParams[dbaas.InstanceSizeNameKey]
+	if !ok || len(instanceSizeName) == 0 {
+		log.Infof("%v is missing, default value of M0 is used", dbaas.InstanceSizeNameKey)
+		instanceSizeName = "M0"
+	}
+
+	return &InstanceData{
+		ProjectName:      projectName,
+		ClusterName:      inst.Spec.Name,
+		ProviderName:     provider,
+		RegionName:       region,
+		InstanceSizeName: instanceSizeName,
+	}, nil
+}
+
+func instanceMutateFn(inst *dbaas.MongoDBAtlasInstance, atlasCluster *v1.AtlasCluster, data *InstanceData) controllerutil.MutateFn {
+	return func() error {
+		atlasCluster.Spec = *getAtlasClusterSpec(inst, data)
+		return nil
+	}
+}
+
+func setInstanceStatusWithClusterInfo(atlasClient *mongodbatlas.Client, inst *dbaas.MongoDBAtlasInstance, atlasCluster *v1.AtlasCluster, project string) workflow.Result {
+	instInfo, result := atlasinventory.GetClusterInfo(atlasClient, project, inst.Spec.Name)
+	if result.IsOk() {
+		// Set the phase based on AtlasCluster state
+		// pending - provisioning not yet started
+		// creating - provisioning in progress
+		// updating - cluster updating in progress
+		// deleting - cluster deletion in progress
+		// deleted - cluster has been deleted
+		// ready - cluster provisioning complete
+		statusFound := false
+		inst.Status.InstanceID = instInfo.InstanceID
+		inst.Status.InstanceInfo = instInfo.InstanceInfo
+		inst.Status.Phase = instInfo.InstanceInfo[dbaas.ProvisionPhaseKey]
+		for _, cond := range atlasCluster.Status.Conditions {
+			if cond.Type == status.ClusterReadyType {
+				statusFound = true
+				if cond.Status == "True" {
+					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
+				} else {
+					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), cond.Reason, cond.Message)
+				}
+			}
+		}
+		if statusFound == false {
+			statusFound = true
+			dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, "Pending", "Waiting for cluster creation to start")
+		}
+	} else {
+		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+	}
+	return result
 }

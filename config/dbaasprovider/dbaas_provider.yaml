@@ -17,6 +17,8 @@ spec:
   connectionKind: MongoDBAtlasConnection
   instanceKind: MongoDBAtlasInstance
   allowsFreeTrial: true
+  externalProvisionURL: https://www.mongodb.com/atlas/database
+  externalProvisionDescription: Follow the MongoDB Atlas procedure [Create a New Cluster|https://docs.atlas.mongodb.com/tutorial/create-new-cluster/] to create a new paid cluster
   credentialFields:
     - key: orgId
       displayName: Organization ID
