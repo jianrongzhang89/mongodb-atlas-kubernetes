@@ -11,7 +11,11 @@ resources:
 =======
 - bases/dbaas.redhat.com_mongodbatlasconnections.yaml
 - bases/dbaas.redhat.com_mongodbatlasinventories.yaml
+<<<<<<< HEAD
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
+=======
+- bases/dbaas.redhat.com_mongodbatlasinstances.yaml
+>>>>>>> Support provisioning with DBaaS operator
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

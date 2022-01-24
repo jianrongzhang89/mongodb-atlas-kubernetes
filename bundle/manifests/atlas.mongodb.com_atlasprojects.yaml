@@ -216,13 +216,13 @@ spec:
                 description: The list of private endpoints configured for current
                   project
                 items:
-<<<<<<< HEAD
                   properties:
                     id:
                       description: Unique identifier for AWS or AZURE Private Link
                         Connection.
                       type: string
                     interfaceEndpointId:
+<<<<<<< HEAD
 <<<<<<< HEAD
                       description: Unique identifier of the AWS or Azure Private Link
                         Interface Endpoint.
@@ -269,6 +269,10 @@ spec:
                         sets, or \n • MONGOS for sharded clusters"
 >>>>>>> dbaas bundle build
 >>>>>>> dbaas bundle build
+=======
+                      description: Unique identifier of the AWS or Azure Private Link
+                        Interface Endpoint.
+>>>>>>> Support provisioning with DBaaS operator
                       type: string
                     provider:
                       description: Cloud provider for which you want to retrieve a
