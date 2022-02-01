@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 =======
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
-	github.com/RHEcosystemAppEng/dbaas-operator v1.0.0
+	github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220119182017-47ff2e6c4905
 	github.com/aws/aws-sdk-go v1.42.25
 	github.com/fatih/structtag v1.2.0
 	github.com/fgrosse/zaptest v1.1.0
@@ -131,5 +131,3 @@ require (
 	sigs.k8s.io/controller-runtime v0.11.0
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
 )
-
-replace github.com/RHEcosystemAppEng/dbaas-operator v1.0.0 => github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220119182017-47ff2e6c4905

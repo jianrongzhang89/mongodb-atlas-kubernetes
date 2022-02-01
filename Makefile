@@ -305,5 +305,9 @@ catalog-build: opm ## Build a catalog image.
 # Push the catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
+<<<<<<< HEAD
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 >>>>>>> Integrate Atlas Operator with Red Hat DBaaS
+=======
+	docker push $(CATALOG_IMG)
+>>>>>>> Fix catalog image push after rebase
