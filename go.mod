@@ -8,6 +8,8 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/aws/aws-sdk-go v1.43.23
+	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
+	github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220119182017-47ff2e6c4905
 	github.com/fatih/structtag v1.2.0
 	github.com/go-logr/zapr v1.2.3
 	github.com/google/go-cmp v0.5.7
@@ -108,5 +110,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/RHEcosystemAppEng/dbaas-operator v1.0.0 => github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220119182017-47ff2e6c4905
