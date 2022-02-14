@@ -33,3 +33,5 @@ require (
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
 	sigs.k8s.io/controller-runtime v0.11.0
 )
+
+replace github.com/RHEcosystemAppEng/dbaas-operator => github.com/jianrongzhang89/dbaas-operator v1.0.1-0.20220213002553-1588304d6edb

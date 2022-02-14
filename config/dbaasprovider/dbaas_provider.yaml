@@ -36,8 +36,9 @@ spec:
     - name: clusterName
       displayName: Cluster Name
       type: string
+      instanceFieldName: name
       required: true
-    - name: ProjectName
+    - name: projectName
       displayName: Atlas Project Name
       type: string
       required: true
@@ -48,11 +49,13 @@ spec:
       defaultValue: Shared
     - name: providerName
       displayName: Cloud Provider
+      instanceFieldName: cloudProvider
       type: string
       required: false
       defaultValue: AWS
     - name: regionName
       displayName: Cloud Region
+      instanceFieldName: cloudRegion
       type: string
       required: false
       defaultValue: US_EAST_1
