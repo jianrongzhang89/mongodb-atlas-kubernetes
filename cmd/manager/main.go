@@ -260,12 +260,9 @@ type Config struct {
 	WatchedNamespaces    map[string]bool
 	ProbeAddr            string
 	GlobalAPISecret      client.ObjectKey
-<<<<<<< HEAD
 	LogLevel             string
 	LogEncoder           string
-=======
 	SyncPeriod           time.Duration
->>>>>>> Support provisioning with DBaaS operator
 }
 
 // ParseConfiguration fills the 'OperatorConfig' from the flags passed to the program
@@ -280,12 +277,9 @@ func parseConfiguration() Config {
 	flag.BoolVar(&config.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-<<<<<<< HEAD
 	flag.StringVar(&config.LogLevel, "log-level", "info", "Log level. Available values: debug | info | warn | error | dpanic | panic | fatal")
 	flag.StringVar(&config.LogEncoder, "log-encoder", "json", "Log encoder. Available values: json | console")
 	appVersion := flag.Bool("v", false, "prints application version")
-=======
->>>>>>> Support provisioning with DBaaS operator
 	flag.Parse()
 
 	if *appVersion {
