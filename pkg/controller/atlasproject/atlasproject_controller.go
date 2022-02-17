@@ -108,9 +108,14 @@ func (r *AtlasProjectReconciler) Reconcile(context context.Context, req ctrl.Req
 
 	connection, err := atlas.ReadConnection(log, r.Client, r.GlobalAPISecret, project.ConnectionSecretObjectKey())
 	if err != nil {
+<<<<<<< HEAD
 		if errRm := r.removeDeletionFinalizer(context, project); errRm != nil {
 			result = workflow.Terminate(workflow.Internal, errRm.Error())
 			ctx.SetConditionFromResult(status.ClusterReadyType, result)
+=======
+		if !project.GetDeletionTimestamp().IsZero() && isDeletionFinalizerPresent(project) {
+			_ = r.removeDeletionFinalizer(context, project)
+>>>>>>> DBAAS-350 AtlasProject CR deletion gets stuck if the credentials secret has been deleted or credentials are expired
 		}
 		result = workflow.Terminate(workflow.AtlasCredentialsNotProvided, err.Error())
 		ctx.SetConditionFromResult(status.ProjectReadyType, result)
