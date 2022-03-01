@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -118,10 +119,46 @@ func (p *AtlasProject) UpdateStatus(conditions []status.Condition, options ...st
 	}
 }
 
+<<<<<<< HEAD
 func (p *AtlasProject) X509SecretObjectKey() *client.ObjectKey {
 	if p.Spec.X509CertRef != nil {
 		key := kube.ObjectKey(p.Namespace, p.Spec.X509CertRef.Name)
 		return &key
+=======
+func (p *AtlasProject) GetCondition(condType status.ConditionType) *status.Condition {
+	for _, cond := range p.Status.Conditions {
+		if cond.Type == condType {
+			return &cond
+		}
+	}
+	return nil
+}
+
+// CheckConditions check AtlasProject conditions
+// First check if ReadyType condition exists and is True
+// Then check if a condition of ProjectReadyType, ClusterReadyType, IPAccessListReadyType or PrivateEndpointReadyType condition exists and is False
+// returns nil otherwise
+func (p *AtlasProject) CheckConditions() *status.Condition {
+	cond := p.GetCondition(status.ReadyType)
+	if cond != nil && cond.Status == corev1.ConditionTrue {
+		return cond
+	}
+	cond = p.GetCondition(status.ProjectReadyType)
+	if cond != nil && cond.Status == corev1.ConditionFalse {
+		return cond
+	}
+	cond = p.GetCondition(status.ClusterReadyType)
+	if cond != nil && cond.Status == corev1.ConditionFalse {
+		return cond
+	}
+	cond = p.GetCondition(status.IPAccessListReadyType)
+	if cond != nil && cond.Status == corev1.ConditionFalse {
+		return cond
+	}
+	cond = p.GetCondition(status.PrivateEndpointReadyType)
+	if cond != nil && cond.Status == corev1.ConditionFalse {
+		return cond
+>>>>>>> DBAAS-368 MongoDB Database instance Provision failed
 	}
 	return nil
 }
