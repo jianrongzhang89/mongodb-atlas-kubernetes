@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,16 +81,7 @@ func init() {
 }
 
 func main() {
-	// controller-runtime/pkg/log/zap is a wrapper over zap that implements logr
-	// logr looks quite limited in functionality so we better use Zap directly.
-	// Though we still need the controller-runtime library and go-logr/zapr as they are used in controller-runtime
-	// logging
-	logger := ctrzap.NewRaw(ctrzap.UseDevMode(true), ctrzap.StacktraceLevel(zap.ErrorLevel))
-
-	config := parseConfiguration(logger.Sugar())
-
-	ctrl.SetLogger(zapr.NewLogger(logger))
-
+	logger, config := parseConfiguration()
 	logger.Sugar().Infof("MongoDB Atlas Operator version %s", version)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -253,7 +244,11 @@ type Config struct {
 }
 
 // ParseConfiguration fills the 'OperatorConfig' from the flags passed to the program
-func parseConfiguration(log *zap.SugaredLogger) Config {
+func parseConfiguration() (*zap.Logger, Config) {
+	// controller-runtime/pkg/log/zap is a wrapper over zap that implements logr
+	// logr looks quite limited in functionality so we better use Zap directly.
+	// Though we still need the controller-runtime library and go-logr/zapr as they are used in controller-runtime
+	// logging
 	var globalAPISecretName string
 	config := Config{}
 	flag.StringVar(&config.AtlasDomain, "atlas-domain", "https://cloud.mongodb.com", "the Atlas URL domain name (no slash in the end).")
@@ -264,7 +259,22 @@ func parseConfiguration(log *zap.SugaredLogger) Config {
 	flag.BoolVar(&config.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	var logLevel string
+	flag.StringVar(&logLevel, "log-level", "info", "Log level.")
+	var level zapcore.Level
+	if err := level.UnmarshalText([]byte(logLevel)); err != nil {
+		// default to info level
+		level = zapcore.InfoLevel
+	}
 	flag.Parse()
+	opts := ctrzap.Options{
+		Development:     true,
+		Level:           level,
+		StacktraceLevel: zap.ErrorLevel,
+		TimeEncoder:     zapcore.ISO8601TimeEncoder,
+	}
+	logger := ctrzap.NewRaw(ctrzap.UseFlagOptions(&opts))
+	log := logger.Sugar()
 
 	config.GlobalAPISecret = operatorGlobalKeySecretOrDefault(globalAPISecretName)
 
@@ -288,7 +298,7 @@ func parseConfiguration(log *zap.SugaredLogger) Config {
 		log.Infof("SYNC_PERIOD_MIN is missing. Default %d is used", syncPeriodMin)
 	}
 	config.SyncPeriod = time.Minute * time.Duration(syncPeriodMin)
-	return config
+	return logger, config
 }
 
 func operatorGlobalKeySecretOrDefault(secretNameOverride string) client.ObjectKey {
