@@ -11,6 +11,7 @@ VERSION ?= 0.8.0
 ifndef PRODUCT_VERSION
 PRODUCT_VERSION := $(shell git describe --tags --dirty --broken)
 endif
+CONTAINER_ENGINE?=docker
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
@@ -36,8 +37,10 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # Base registry for the operator, bundle, catalog images
 REGISTRY ?= quay.io/mongodb
 # BUNDLE_IMG defines the image:tag used for the bundle.
-# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= $(REGISTRY)/mongodb-atlas-controller-bundle:$(VERSION)
+BUNDLE_IMG ?= $(IMG)-bundle:$(VERSION)
+
+# The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:0.2.0).
+CATALOG_IMG ?= $(IMG)-catalog:$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= mongodb-atlas-controller:latest
@@ -163,7 +166,7 @@ image: manager ## Build the operator image
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	$(CONTAINER_ENGINE) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: bundle-push
 bundle-push: bundle bundle-build ## Publish the bundle image
@@ -216,7 +219,7 @@ deploy-olm: bundle-build bundle-push catalog-build catalog-push build-catalogsou
 
 .PHONY: docker-push
 docker-push: ## Push the docker image
-	docker push $(IMGVERSION)
+	$(CONTAINER_ENGINE) push $(IMGVERSION)
 
 # Additional make goals
 .PHONY: run-kind
