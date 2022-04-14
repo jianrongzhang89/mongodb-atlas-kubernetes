@@ -138,6 +138,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
 >>>>>>> dbaas bundle build
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+<<<<<<< HEAD
   name: mongodb-atlas-kubernetes.v0.7.0
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -149,6 +150,9 @@ metadata:
 >>>>>>> dbaas bundle build
 =======
 >>>>>>> Support provisioning with DBaaS operator
+=======
+  name: mongodb-atlas-kubernetes.v0.8.0
+>>>>>>> handle bundle upgrades
   namespace: placeholder
 spec:
   apiservicedefinitions: { }
@@ -725,7 +729,7 @@ spec:
                       fieldPath: metadata.namespace
                 - name: SYNC_PERIOD_MIN
                   value: "180"
-                image: registry.connect.redhat.com/mongodb/mongodb-atlas-kubernetes-operator:0.7.0
+                image: registry.connect.redhat.com/mongodb/mongodb-atlas-kubernetes-operator:0.8.0
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -803,6 +807,7 @@ spec:
     name: MongoDB, Inc
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   version: 0.8.0
   replaces: mongodb-atlas-kubernetes.v0.7.0
 =======
@@ -816,3 +821,7 @@ spec:
 =======
   version: 0.7.0
 >>>>>>> Support provisioning with DBaaS operator
+=======
+  replaces: mongodb-atlas-kubernetes.v0.2.0
+  version: 0.8.0
+>>>>>>> handle bundle upgrades

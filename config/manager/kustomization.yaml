@@ -12,5 +12,9 @@ images:
   newTag: latest
 =======
   newName: registry.connect.redhat.com/mongodb/mongodb-atlas-kubernetes-operator
+<<<<<<< HEAD
   newTag: 0.7.0
 >>>>>>> Support provisioning with DBaaS operator
+=======
+  newTag: 0.8.0
+>>>>>>> handle bundle upgrades
