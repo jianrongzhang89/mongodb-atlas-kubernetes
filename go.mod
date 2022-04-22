@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 =======
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
-	github.com/RHEcosystemAppEng/dbaas-operator v0.1.4
+	github.com/RHEcosystemAppEng/dbaas-operator v0.1.5
 	github.com/aws/aws-sdk-go v1.42.25
 	github.com/fatih/structtag v1.2.0
 	github.com/fgrosse/zaptest v1.1.0
