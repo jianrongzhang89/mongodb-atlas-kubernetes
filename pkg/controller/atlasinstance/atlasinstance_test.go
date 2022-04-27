@@ -187,7 +187,7 @@ func setupMockAltasServer(t *testing.T) (client *mongodbatlas.Client, teardown f
 	// when there's a non-empty base URL path. So, use that.
 	apiHandler := http.NewServeMux()
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, router))
-	router.HandleFunc("/groups/byName/{group-name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/atlas/v1.0/groups/byName/{group-name}", func(w http.ResponseWriter, r *http.Request) {
 		if m := http.MethodGet; m != r.Method {
 			t.Errorf("Request method = %v, expected %v", r.Method, m)
 		}
@@ -209,7 +209,7 @@ func setupMockAltasServer(t *testing.T) (client *mongodbatlas.Client, teardown f
 		}
 	}).Methods(http.MethodGet)
 
-	router.HandleFunc("/groups/{group-id}/clusters/{cluster-name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/atlas/v1.0/groups/{group-id}/clusters/{cluster-name}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		groupID, ok := vars["group-id"]
 		if !ok {
@@ -283,16 +283,18 @@ func TestSetInstanceStatusWithClusterInfo(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: v1.AtlasClusterSpec{
-					Name: tc.clusterName,
 					Project: v1.ResourceRefNamespaced{
 						Name:      "my-atlas-project-free",
 						Namespace: namespace,
 					},
-					ProviderSettings: &v1.ProviderSettingsSpec{
-						BackingProviderName: "AWS",
-						InstanceSizeName:    "M0",
-						ProviderName:        "TENANT",
-						RegionName:          "US_EAST_1",
+					ClusterSpec: &v1.ClusterSpec{
+						Name: tc.clusterName,
+						ProviderSettings: &v1.ProviderSettingsSpec{
+							BackingProviderName: "AWS",
+							InstanceSizeName:    "M0",
+							ProviderName:        "TENANT",
+							RegionName:          "US_EAST_1",
+						},
 					},
 				},
 				Status: status.AtlasClusterStatus{

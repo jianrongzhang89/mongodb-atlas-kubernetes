@@ -37,10 +37,8 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # Base registry for the operator, bundle, catalog images
 REGISTRY ?= quay.io/mongodb
 # BUNDLE_IMG defines the image:tag used for the bundle.
-BUNDLE_IMG ?= $(IMG)-bundle:$(VERSION)
-
-# The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:0.2.0).
-CATALOG_IMG ?= $(IMG)-catalog:$(VERSION)
+# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
+BUNDLE_IMG ?= $(REGISTRY)/mongodb-atlas-controller-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= mongodb-atlas-controller:latest
@@ -155,14 +153,14 @@ endef
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, update security context for OpenShift, then validate generated files.
 	operator-sdk generate kustomize manifests -q --apis-dir=pkg/api
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMGVERSION)
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMAGE)
 	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --manifests --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 .PHONY: image
 image: manager ## Build the operator image
-	docker build -t $(OPERATOR_IMAGE) .
-	docker push $(OPERATOR_IMAGE)
+	$(CONTAINER_ENGINE) build -t $(OPERATOR_IMAGE) .
+	$(CONTAINER_ENGINE) push $(OPERATOR_IMAGE)
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
@@ -170,7 +168,7 @@ bundle-build: ## Build the bundle image.
 
 .PHONY: bundle-push
 bundle-push: bundle bundle-build ## Publish the bundle image
-	docker push $(BUNDLE_IMG)
+	$(CONTAINER_ENGINE) push $(BUNDLE_IMG)
 
 .PHONY: catalog-build
 CATALOG_DIR ?= ./scripts/openshift/atlas-catalog
@@ -186,7 +184,7 @@ catalog-build: ## bundle bundle-push ## Build file-based bundle
 
 .PHONY: catalog-push
 catalog-push:
-	docker push $(CATALOG_IMAGE)
+	$(CONTAINER_ENGINE) push $(CATALOG_IMAGE)
 
 .PHONY: build-subscription
 build-subscription:
@@ -219,7 +217,7 @@ deploy-olm: bundle-build bundle-push catalog-build catalog-push build-catalogsou
 
 .PHONY: docker-push
 docker-push: ## Push the docker image
-	$(CONTAINER_ENGINE) push $(IMGVERSION)
+	$(CONTAINER_ENGINE) push $(OPERATOR_IMAGE)
 
 # Additional make goals
 .PHONY: run-kind

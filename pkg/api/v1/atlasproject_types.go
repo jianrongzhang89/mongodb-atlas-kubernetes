@@ -123,6 +123,9 @@ func (p *AtlasProject) X509SecretObjectKey() *client.ObjectKey {
 	if p.Spec.X509CertRef != nil {
 		key := kube.ObjectKey(p.Namespace, p.Spec.X509CertRef.Name)
 		return &key
+	}
+	return nil
+}
 
 func (p *AtlasProject) GetCondition(condType status.ConditionType) *status.Condition {
 	for _, cond := range p.Status.Conditions {

@@ -373,9 +373,11 @@ func getAtlasClusterSpec(atlasProject *v1.AtlasProject, data *InstanceData) *v1.
 		}
 	}
 	return &v1.AtlasClusterSpec{
-		Project:          v1.ResourceRefNamespaced{Name: atlasProject.Name, Namespace: atlasProject.Namespace},
-		Name:             data.ClusterName,
-		ProviderSettings: providerSettingsSpec,
+		Project: v1.ResourceRefNamespaced{Name: atlasProject.Name, Namespace: atlasProject.Namespace},
+		ClusterSpec: &v1.ClusterSpec{
+			Name:             data.ClusterName,
+			ProviderSettings: providerSettingsSpec,
+		},
 	}
 }
 

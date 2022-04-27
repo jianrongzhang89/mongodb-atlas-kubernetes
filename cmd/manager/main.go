@@ -305,7 +305,7 @@ func parseConfiguration() Config {
 	syncPeriodMin, _ := strconv.Atoi(os.Getenv("SYNC_PERIOD_MIN"))
 	if syncPeriodMin <= 0 {
 		syncPeriodMin = 180 // default to 180 minutes (3 hours)
-		log.Infof("SYNC_PERIOD_MIN is missing. Default %d is used", syncPeriodMin)
+		log.Printf("SYNC_PERIOD_MIN is missing. Default %d is used", syncPeriodMin)
 	}
 	config.SyncPeriod = time.Minute * time.Duration(syncPeriodMin)
 	return config
