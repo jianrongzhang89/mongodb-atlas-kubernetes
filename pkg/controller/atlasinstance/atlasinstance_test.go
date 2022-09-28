@@ -331,7 +331,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 					},
 				},
 			}
-			result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
+			_, result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
 			if len(tc.expErrMsg) == 0 {
 				cond := dbaas.GetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType)
 				assert.NotNil(t, cond)
