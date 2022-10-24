@@ -53,10 +53,12 @@ func TestGetInstanceData(t *testing.T) {
 		providerName        string
 		regionName          string
 		instanceSizeName    string
+		ipAccessList        string
 		expProviderName     string
 		expRegionName       string
 		expInstanceSizeName string
 		expErrMsg           string
+		expIPAccessList     string
 	}{
 		"Nominal": {
 			deploymentName:      "myDeployment",
@@ -64,10 +66,25 @@ func TestGetInstanceData(t *testing.T) {
 			providerName:        "GCP",
 			regionName:          "GCP_REGION",
 			instanceSizeName:    "M10",
+			ipAccessList:        "192.168.0.1",
 			expProviderName:     "GCP",
 			expRegionName:       "GCP_REGION",
 			expInstanceSizeName: "M10",
 			expErrMsg:           "",
+			expIPAccessList:     "192.168.0.1",
+		},
+		"NominalWithCIDR": {
+			deploymentName:      "myDeployment",
+			projectName:         "myProject",
+			providerName:        "GCP",
+			regionName:          "GCP_REGION",
+			instanceSizeName:    "M10",
+			ipAccessList:        "192.168.0.1/24",
+			expProviderName:     "GCP",
+			expRegionName:       "GCP_REGION",
+			expInstanceSizeName: "M10",
+			expErrMsg:           "",
+			expIPAccessList:     "192.168.0.1/24",
 		},
 		"MissingDeploymentName": {
 			deploymentName:      "",
@@ -101,6 +118,7 @@ func TestGetInstanceData(t *testing.T) {
 			expRegionName:       "AWS_REGION",
 			expInstanceSizeName: "M10",
 			expErrMsg:           "",
+			expIPAccessList:     "52.206.222.245/32",
 		},
 		"UseDefaultRegion": {
 			deploymentName:      "myDeployment",
@@ -112,6 +130,7 @@ func TestGetInstanceData(t *testing.T) {
 			expRegionName:       "US_EAST_1",
 			expInstanceSizeName: "M10",
 			expErrMsg:           "",
+			expIPAccessList:     "0.0.0.0/0",
 		},
 		"UseDefaultInstanceSizeName": {
 			deploymentName:      "myDeployment",
@@ -123,6 +142,7 @@ func TestGetInstanceData(t *testing.T) {
 			expRegionName:       "US_EAST_1",
 			expInstanceSizeName: "M0",
 			expErrMsg:           "",
+			expIPAccessList:     "52.206.222.245/32",
 		},
 	}
 
@@ -148,6 +168,7 @@ func TestGetInstanceData(t *testing.T) {
 					OtherInstanceParams: map[string]string{
 						"projectName":      tc.projectName,
 						"instanceSizeName": tc.instanceSizeName,
+						"ipAccessList":     tc.expIPAccessList,
 					},
 				},
 			}
@@ -158,6 +179,7 @@ func TestGetInstanceData(t *testing.T) {
 				ProviderName:     tc.expProviderName,
 				RegionName:       tc.expRegionName,
 				InstanceSizeName: tc.expInstanceSizeName,
+				IPAccessList:     tc.expIPAccessList,
 			}
 			res, err := getInstanceData(log, instance)
 			if len(tc.expErrMsg) == 0 {
@@ -384,6 +406,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	tcName := "mytest"
 	deploymentName := "mydeploymentnew"
 	projectName := "myproject"
+	ipAccessList := "52.206.222.245/32"
 	expectedPhase := dbaasv1alpha1.InstancePhasePending
 	expectedErrString := "CLUSTER_NOT_FOUND"
 	expectedRequeue := true
@@ -436,7 +459,8 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 				Namespace: inventory.Namespace,
 			},
 			OtherInstanceParams: map[string]string{
-				"projectName": projectName,
+				"projectName":  projectName,
+				"ipAccessList": ipAccessList,
 			},
 		},
 	}
@@ -470,11 +494,18 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPhase, instanceUpdated.Status.Phase)
 
+	// Verify that the AtlasProject created has ipAccessList set
+	atlasProject, err := r.getAtlasProject(context.Background(), instance)
+	assert.NoError(t, err)
+	assert.NotNil(t, atlasProject)
+	assert.NotEmpty(t, atlasProject.Spec.ProjectIPAccessList)
+	assert.Equal(t, atlasProject.Spec.ProjectIPAccessList[0].CIDRBlock, ipAccessList)
+
 	// After an instance is deleted, the corresponding atlas project should be deleted
 	delEvent := event.DeleteEvent{Object: instance}
 	err = r.Delete(delEvent)
 	assert.NoError(t, err)
-	atlasProject, err := r.getAtlasProject(context.Background(), instance)
+	atlasProject, err = r.getAtlasProject(context.Background(), instance)
 	assert.NoError(t, err)
 	assert.Nil(t, atlasProject)
 }

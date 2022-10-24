@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -84,6 +85,7 @@ type InstanceData struct {
 	ProviderName     string
 	RegionName       string
 	InstanceSizeName string
+	IPAccessList     string
 }
 
 const (
@@ -349,6 +351,11 @@ func (r *MongoDBAtlasInstanceReconciler) getAtlasProjectForCreation(instance *db
 	if err := r.Client.Get(context.Background(), *inventory.ConnectionSecretObjectKey(), secret); err != nil {
 		return nil, err
 	}
+
+	accessList, err := parseIPAccessList(data.IPAccessList)
+	if err != nil {
+		return nil, err
+	}
 	return &v1.AtlasProject{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "atlas-project-",
@@ -366,7 +373,7 @@ func (r *MongoDBAtlasInstanceReconciler) getAtlasProjectForCreation(instance *db
 		Spec: v1.AtlasProjectSpec{
 			Name:                data.ProjectName,
 			ConnectionSecret:    &common.ResourceRef{Name: inventory.Spec.CredentialsRef.Name},
-			ProjectIPAccessList: []project.IPAccessList{},
+			ProjectIPAccessList: accessList,
 		},
 	}, nil
 }
@@ -468,12 +475,24 @@ func getInstanceData(log *zap.SugaredLogger, inst *dbaas.MongoDBAtlasInstance) (
 		instanceSizeName = "M0"
 	}
 
+	accessIP, ok := inst.Spec.OtherInstanceParams[dbaas.IPAccessListKey]
+	if !ok || len(strings.TrimSpace(accessIP)) == 0 {
+		ip, err := dbaas.GetPublicIP()
+		if err != nil {
+			log.Infof("Failed to get the public IP")
+			return nil, err
+		}
+		accessIP = ip
+		log.Infof("%v is missing, current IP %s is used.", dbaas.IPAccessListKey, accessIP)
+	}
+
 	return &InstanceData{
 		ProjectName:      strings.TrimSpace(projectName),
 		ClusterName:      name,
 		ProviderName:     provider,
 		RegionName:       region,
 		InstanceSizeName: strings.TrimSpace(instanceSizeName),
+		IPAccessList:     strings.TrimSpace(accessIP),
 	}, nil
 }
 
@@ -520,4 +539,23 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(dbaasv1alpha1.InstancePhasePending), "Waiting for cluster creation to start")
 	}
 	return false, result
+}
+
+func parseIPAccessList(accessListStr string) ([]project.IPAccessList, error) {
+	accessList := []project.IPAccessList{}
+	ranges := strings.Split(accessListStr, " ")
+	for _, r := range ranges {
+		ip := net.ParseIP(r)
+		if ip != nil {
+			accessList = append(accessList, project.IPAccessList{IPAddress: r})
+		} else {
+			_, _, err := net.ParseCIDR(r)
+			if err == nil {
+				accessList = append(accessList, project.IPAccessList{CIDRBlock: r})
+			} else {
+				return nil, fmt.Errorf("parsing error for ip or ip range: %s", r)
+			}
+		}
+	}
+	return accessList, nil
 }
