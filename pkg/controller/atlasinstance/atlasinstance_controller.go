@@ -504,10 +504,10 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 			if cond.Status == corev1.ConditionTrue {
 				if inst.Status.Phase == dbaasv1alpha1.InstancePhaseReady {
 					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
-				} else {
-					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, instancePhaseChangedInAtlas, instancePhaseChangedInAtlasMsg)
-					return true, result
+					return false, result
 				}
+				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, instancePhaseChangedInAtlas, instancePhaseChangedInAtlasMsg)
+				return true, result
 			} else {
 				if strings.Contains(cond.Message, FreeClusterFailed) {
 					inst.Status.Phase = dbaasv1alpha1.InstancePhaseFailed
@@ -519,6 +519,5 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 	if !statusFound {
 		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(dbaasv1alpha1.InstancePhasePending), "Waiting for cluster creation to start")
 	}
-
 	return false, result
 }
