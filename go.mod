@@ -19,11 +19,11 @@ require (
 	github.com/onsi/gomega v1.17.0
 	github.com/pborman/uuid v1.2.1
 	github.com/sethvargo/go-password v0.2.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.1
 	go.mongodb.org/atlas v0.7.3-0.20210315115044-4b1d3f428c24
 	go.mongodb.org/mongo-driver v1.7.4
 	go.uber.org/zap v1.19.1
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.23.0
 	k8s.io/client-go v0.23.0
