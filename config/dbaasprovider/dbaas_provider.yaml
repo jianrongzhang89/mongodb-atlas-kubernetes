@@ -68,3 +68,4 @@ spec:
       displayName: List of IP Addresses or Ranges (Space Separated) to Access the Cluster
       type: string
       required: false
+      defaultValue: "0.0.0.0/0"

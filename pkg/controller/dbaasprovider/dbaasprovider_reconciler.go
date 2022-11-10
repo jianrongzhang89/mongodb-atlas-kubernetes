@@ -44,8 +44,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 )
 
 const (
@@ -165,17 +163,6 @@ func (r *DBaaSProviderReconciler) getAtlasProviderCR(clusterRoleList *rbac.Clust
 	err = json.Unmarshal(jsonData, instance)
 	if err != nil {
 		return nil, err
-	}
-
-	for ind, spec := range instance.Spec.InstanceParameterSpecs {
-		if spec.Name == dbaas.IPAccessListKey {
-			ip, err := dbaas.GetPublicIP()
-			if err != nil {
-				return nil, err
-			}
-			spec.DefaultValue = ip
-			instance.Spec.InstanceParameterSpecs[ind] = spec
-		}
 	}
 	instance.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
 		{

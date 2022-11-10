@@ -14,10 +14,6 @@ limitations under the License.
 package dbaas
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"net/http"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
@@ -97,28 +93,4 @@ func GetInstanceCondition(inv *MongoDBAtlasInstance, condType string) *metav1.Co
 		}
 	}
 	return nil
-}
-
-type IP struct {
-	Query string
-}
-
-// GetPublicIP returns the static outbound public IP of the OpenShift Cluster
-// Or when the operator runs locally, the h
-func GetPublicIP() (string, error) {
-	req, err := http.Get("http://ip-api.com/json/")
-	if err != nil {
-		return "", err
-	}
-	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return "", err
-	}
-	var ip IP
-	err = json.Unmarshal(body, &ip)
-	if err != nil {
-		return "", err
-	}
-	return ip.Query, nil
 }
